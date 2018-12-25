@@ -1,0 +1,162 @@
+---
+title: "Dates and Times"
+subtitle: "Swirl course notes"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
+```
+The package lubridate works with dates and time
+"lubridate has a consistent, memorable syntax, that makes working with dates fun instead of frustrating."  
+```{r, message=FALSE, warning=FALSE}
+require(lubridate)
+```
+  
+```{r}
+Sys.getlocale("LC_TIME") # to view the locale of my date&time representation
+```
+  
+###Get and save today's date
+```{r}
+this_day <- today ()
+this_day
+```
+  
+###Components of the date
+```{r}
+year (this_day)
+month (this_day)
+day (this_day)
+```
+  
+###Day of the week
+```{r}
+wday (this_day) # day of the week
+wday (this_day, label = T) # print the name of the day
+```
+  
+###day-time combinations
+####day & time of the moment
+```{r}
+this_moment <- now ()
+this_moment
+```
+  
+###Components of the day-time combination
+```{r}
+hour (this_moment)
+minute (this_moment)
+second (this_moment)
+```
+<br/>
+
+###Parsing date-times: ``ymd()``, ``dmy()``, ``hms()``, ``ymd_hms()``, etc.  
+#### ``ymd()`` took a character string as input and returned an object of class POSIXct  
+#### POSIXct is one way that R stores date-time information internally  
+```{r} 
+my_date <- ymd ("1989-05-17") 
+my_date
+```
+
+```{r}
+class (my_date)
+```
+
+```{r}
+ymd ("1989 May 17") # different date-time format also works
+```
+
+```{r}
+mdy ("March 12, 1975") # need to use differnt functions to match the order of components
+```
+
+```{r}
+dmy (25081985) # works also with numeric strings
+```
+
+```{r}
+ymd ("192012") # using quotes is consistent with the way most dates are represented (as character strings)
+```
+  
+```{r}
+ymd ("1920/1/2") # must supply sufficient info
+```
+
+```{r}
+dt1 <- "2014-08-23 17:23:02"# Example dataset
+```
+
+```{r}
+ymd_hms (dt1)
+```
+
+```{r}
+hms ("03:22:14")
+```
+
+```{r}
+dt2 <- c("2014-05-14", "2014-09-22", "2014-07-11") # Example dataset
+```
+
+```{r}
+ymd (dt2)
+```
+  
+### ``update()`` updates 1+ components of a date-time
+```{r}
+update (this_moment, hours = 8, minutes = 34, seconds = 55) # manually alter the components but NOT the object
+```
+
+```{r}
+this_moment # remains the same unless I change it
+```
+
+```{r}
+this_moment <- update (this_moment, hours = 16, minutes = 3) # this alters the object
+```
+
+### Switches of time zones
+#### Scenario 1: Now, pretend you are in New York City and you are planning to visit a friend in Hong Kong. 
+#### You seem to have misplaced your itinerary, but you know that your flight departs New York at 17:34 (5:34pm) the day after tomorrow. 
+#### You also know that your flight is scheduled to arrive in Hong Kong exactly 15 hours and 50 minutes after departure.
+```{r}
+nyc <- now ("America/New_York") # the moment in new york city
+nyc
+```
+
+for time zone names: <http://en.wikipedia.org/wiki/List_of_tz_database_time_zones>
+```{r}
+depart <- nyc + days (2) # add 2 days (the day after tomorrow)
+depart
+```
+
+```{r}
+depart <- update (depart, hours = 17, minutes = 34) # departure time
+depart
+```
+
+```{r}
+arrive <- depart + hours (15) + minutes (50) # flight duration
+arrive
+```
+
+```{r}
+arrive <- with_tz(arrive, "Asia/Hong_Kong") # arrival time in hong kong
+arrive
+```
+
+
+#### Scenario 2: You and your friend have just met at the airport and you realize that the last time you were together was in Singapore on June 17, 2008.   
+#### Naturally, you'd like to know exactly how long it has been.
+```{r}
+last_time <- mdy ("June 17, 2008", tz = "Singapore")
+last_time #"2008-06-17 SGT"
+```
+
+``interval (start time, end time...)``ß
+```{r}
+last_time <- "2008-06-17 SGT" # assign value b/c format not matched
+how_long <- interval (last_time, arrive)
+as.period (how_long)
+```
+ 

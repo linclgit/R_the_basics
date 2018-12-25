@@ -1,0 +1,78 @@
+---
+output: html_document
+---
+
+
+```{r, echo=TRUE}
+(x <- 1:10)
+(x [c (TRUE, FALSE)] <- 1)
+x
+```
+
+```{r}
+(d <- data.frame (x = 1:10, y = letters [1:10], z = LETTERS [1:10]))
+d [1]
+d [, 1]
+d [, "x", drop = FALSE] # result type: data. frame
+d [, "x"] # result type: integer
+d [c ("x", "z")]
+d [d$x > 3, "y", drop = FALSE]
+d [2, ]
+```
+
+```{r, echo = TRUE}
+(txt <- readLines ("https://raw.githubusercontent.com/edwindj/datacleaning/master/Rnw/syllabus/files/daltons.txt"))
+```
+####detect lines starting with a percentage sign..
+```{r}
+I <- grepl("^%", txt)
+```
+####and throw them out
+```{r, warning=FALSE}
+(dat <- txt[!I])
+(fieldList <- strsplit (dat, split = ","))
+assignFields <- function (x){
+  out <- character (3)
+  # get names: detect those containing alphabetic values
+  i <- grepl ("[[:alpha:]]", x)
+  out[1] <- x[i]
+  # get birth date (if any)
+  i <- which (as.numeric (x) < 1890)
+  out[2] <- ifelse (length(i) > 0, x[i], NA)
+  # get death date (if any)
+  i <- which (as.numeric(x) > 1890)
+  out[3] <- ifelse (length(i) > 0, x[i], NA)
+  out
+}
+(standardFields <- lapply(fieldList, assignFields))
+(M <- matrix (
+  unlist (standardFields), 
+  nrow = length (standardFields), 
+  byrow = TRUE))
+colnames(M) <- c("name","birth","death")
+(daltons <- as.data.frame(M, stringsAsFactors=FALSE))
+sapply (daltons, class) # retrieve classes of all columns
+(daltons <- transform (
+  daltons, 
+  birth = as.numeric(birth), 
+  death = as.numeric(death)
+))
+sapply (daltons, class)
+```
+```{r}
+(f <- factor(c("a", "b", "a", "a", "c")))
+levels (f)
+```
+```{r}
+gender <- c(2, 1, 1, 2, 0, 1, 1)
+# recoding table, stored in a simple vector
+recode <- c(male = 1, female = 2)
+(gender <- factor(gender, levels = recode, labels = names(recode)))
+(gender <- relevel(gender, ref = "female"))
+age <- c(27, 52, 65, 34, 89, 45, 68) # assign 7 values to the 7 items in gender
+(gender <- reorder(gender, age))
+attr(gender, "scores") <- NULL
+gender
+
+```
+

@@ -1,0 +1,251 @@
+---
+title: "The apply family"
+subtitle: "swirl course notes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+    
+### ``lapply()`` and ``sapply()``  
+#### The two most important members of R's -apply family of functions, also known as **loop functions**   
+
+These powerful functions, along with their close relatives (``vapply()`` and ``tapply()``, among others) offer a concise and convenient means of implementing the **Split-Apply-Combine** strategy for data analysis.  
+
+Each of the -apply functions will **SPLIT** up some data into smaller pieces, **APPLY** a function to each piece, then **COMBINE** the results. A more detailed discussion of this strategy is found in Hadley Wickham's Journal of Statistical Software paper titled 'The Split-Apply-Combine Strategy for Data Analysis'.  
+
+#### The Flags dataset  
+#### from the [UCI Machine Learning Repository](http://archive.ics.uci.edu/ml/datasets/Flags) 
+```{r}
+flags <- read.table (file ("http://archive.ics.uci.edu/ml/machine-learning-databases/flags/flag.data"), sep = ",", header = F, col.names = c ("name", "landmass", "zone", "area", "population", "language", "religion", "bars", "stripes", "colours", "red", "green", "blue", "gold", "white", "black", "orange", "mainhue", "circles", "crosses", "saltires", "quarters", "sunstars", "crescent", "triangle", "icon", "animate", "text", "topleft", "botright"))
+flags
+```
+
+the dimensions
+```{r}
+dim (flags)
+```
+There are 194 rows, or observations, and 30 columns, or variables. Each observation is a country and each variable describes some characteristic of that country or its flag.  
+  
+View in what format the variables have been stored  
+```{r}
+class(flags)
+```
+That just tells us that the entire dataset is stored as a 'data.frame', which doesn't answer our question.  
+What we really need is to call the class() function on each individual column. While we could do this manually (i.e. one column at a time) it's much faster if we can automate the process.  
+
+***
+* ### lapply  
+
+The ``lapply()`` function takes a **list** as input, applies a function to each element of the list, then returns a list of the same length as the original one.  
+Since **a data frame is really just a list of vectors**, we can use ``lapply()`` to apply the ``class()`` function to each column of the flags dataset.
+```{r}
+as.list(flags)
+
+cls_list <- lapply (flags, class)
+cls_list
+```
+
+The '**l**' in 'lapply' stands for '**list**'. 
+```{r}
+class(cls_list)
+```
+We got a list of length 30 -- one element for each variable/column. The output would be considerably more compact if we could represent it as a **vector** instead of a list.  
+
+***
+* ### sapply  
+
+**Lists are most helpful for storing multiple classes of data.** In this case, since every element of the list returned by ``lapply()`` is a character vector of length one, cls_list can be simplified to a character vector.  
+```{r}
+as.character (cls_list)
+```
+
+``sapply()`` allows you to automate this process by calling ``lapply()`` behind the scenes, but then attempting to **simplify** (hence the 's' in 'sapply') the result for you.  
+```{r}
+cls_vect<-sapply(flags,class)
+class(cls_vect)
+```
+In general  
+* If the result is a list where every element is of length one, then ``sapply()`` returns a vector.  
+* If the result is a list where every element is a vector of the same length (> 1), ``sapply()`` returns a matrix.  
+* If ``sapply()`` can't figure things out, then it just returns a list, no different from what ``lapply()`` would give you.  
+
+***
+### More practice
+Columns 11 through 17 of our dataset are indicator variables, each representing a different color. The value of the indicator variable is 1 if the color is present in a country's flag and 0 otherwise.  
+  
+Therefore, if we want to know the total number of countries with, for example, the color orange on their flag, we can just add up all of the 1s and 0s in the 'orange' column.
+```{r}
+sum(flags$orange)
+```
+
+#### Now repeat this operation for each of the colors recorded in the dataset.
+```{r}
+flag_colors <- flags[,11:17]
+head (flag_colors)
+```
+Get a **list** containing the sum of each column of flag_colors  
+```{r}
+lapply (flag_colors, sum)
+```
+This tells us that of the 194 flags in our dataset, 153 contain the color red, 91 contain green, 99 contain blue, and so on.  
+
+#### simplify the result with ``sapply()``
+```{r}
+sapply (flag_colors, sum)
+```
+Perhaps it's more informative to find the proportion of flags (out of 194) containing each color. Since each column is just a bunch of 1s and 0s, the arithmetic mean of each column will give us the proportion of 1s.  
+```{r}
+sapply (flag_colors, mean) 
+```
+
+#### ``sapply()`` instead returns a matrix when each element of the list returned by ``lapply()`` is a vector of the same length (> 1)...
+```{r}
+flag_shapes <- flags [, 19:23]
+```
+Each of these columns (i.e. variables) represents the number of times a particular shape or design appears on a country's flag. We are interested in the minimum and maximum number of times each shape or design appears.  
+  
+The ``range()`` function returns the minimum and maximum of its first argument, which should be a numeric vector.  
+```{r}
+lapply (flag_shapes, range)
+```
+``lapply()`` always returns a list.
+```{r}
+shape_mat <- sapply (flag_shapes, range)
+shape_mat
+```
+Each column of shape_mat gives the minimum (row 1) and maximum (row 2) number of times its respective shape appears in different flags.
+```{r}
+class (shape_mat)
+```
+
+#### when ``sapply()`` can't figure out how to simplify the result and thus returns a list, no different from ``lapply()``...  
+  
+When given a vector, the ``unique()`` function returns a vector with all duplicate elements removed. In other words, ``unique()`` returns a vector of only the 'unique' elements.
+```{r}
+unique (c (3, 4, 5, 5, 5, 6, 6))
+```
+View the unique values for each variable in the flags dataset
+```{r}
+unique_vals <- lapply (flags, unique)
+unique_vals
+```
+determine the length of each element of unique_vals (i.e. the number of unique values for each variable)
+```{r}
+sapply (unique_vals, length)
+```
+The fact that the elements of the unique_vals list are all **vectors of different length** poses a problem for ``sapply()``, since there's no obvious way of simplifying the result.  
+  
+Pretend you are interested in only the second item from each element of the unique_vals list that you just created.  
+
+#### Since each element of the unique_vals list is a vector and we're not aware of any built-in function in R that returns the second element of a vector, we will construct our own function.  
+```{r}
+lapply (unique_vals, function (elem) elem [2])
+```
+Our function has no name and disappears as soon as ``lapply()`` is done using it.  
+So-called '**anonymous functions**' can be very useful when one of R's built-in functions isn't an option
+                                        |   4%
+
+> ### ``vapply()`` and ``tapply()``
+
+Whereas ``sapply()`` tries to 'guess' the correct format of the result, ``vapply()`` allows you to specify it explicitly. **If the result doesn't match the format you specify, ``vapply()`` will throw an error, causing the operation to stop**. This can prevent significant problems in your code that might be caused by getting unexpected return values from ``sapply()``.  
+
+* ### ``vapply()``
+View a character vector containing the class of each column in the dataset.  
+```{r}
+sapply(flags, class)
+```
+If we wish to **be explicit** about the format of the result we expect, we can use ``vapply(flags, class, character(1))``. The '``character(1)``' argument tells R that we expect the class function to return a character vector of length 1 when applied to EACH column of the flags dataset.  
+
+```{r}
+vapply(flags, class, character(1))
+```
+Note that since our expectation was correct (i.e. ``character(1)``), the ``vapply()`` result is identical to the ``sapply()`` result -- a character vector of column classes.  
+  
+You might think of ``vapply()`` as being '**safer**' than ``sapply()``, since it requires you to specify the format of the output in advance, instead of just allowing R to '**guess**' what you wanted. In addition, ``vapply()`` may perform faster than ``sapply()`` for large datasets.   
+  
+As a data analyst, you'll often wish to split your data up into groups based on the value of some variable, then apply a function to the members of each group.  
+
+* ### ``tapply()``  
+
+The '**landmass**' variable in our dataset takes on integer values between 1 and 6, each of which represents a different part of the world.  
+
+#### See how many flags/countries fall into each group.  
+```{r}
+table(flags$landmass)
+```
+The '**animate**' variable in our dataset takes the value 1 if a country's flag contains an animate image (e.g. an eagle, a tree, a human hand) and 0 otherwise.  
+
+#### See how many flags contain an animate image.  
+```{r}
+table(flags$animate)
+```
+This tells us that 39 flags contain an animate object (animate = 1) and 155 do not (animate = 0).  
+
+If you take the arithmetic mean of a bunch of 0s and 1s, you get the proportion of 1s.  
+
+#### Apply the mean function to the 'animate' variable separately for each of the six landmass groups, thus giving us the proportion of flags containing an animate image WITHIN each landmass group.    
+```{r}
+tapply(flags$animate, flags$landmass, mean)
+```
+The first landmass group (landmass = 1) corresponds to North America and contains the highest proportion of flags with an animate image (0.4194).  
+
+#### Similarly, look at a summary of population values (in round millions) for countries with and without the color red on their flag  
+```{r}
+tapply(flags$population, flags$red, summary)
+```
+What is the median population (in millions) for countries *without* the color red on their flag?  
+1: 4.0  
+2: 27.6  
+3: 0.0  
+4: 9.0  
+5: 22.1  
+6: 3.0  
+  
+Selection: **6**  
+
+#### Lastly, use the same approach to look at a summary of population values for each of the six landmasses.  
+```{r}
+tapply(flags$population, flags$landmass, summary)
+```
+
+What is the maximum population (in millions) for the fourth landmass group (Africa)?  
+
+1: 119.0  
+2: 157.00  
+3: 1010.0  
+4: 5.00  
+5: 56.00  
+  
+Selection: **5**  
+
+In this lesson, you learned how to use ``vapply()`` as a safer alternative to ``sapply()``, which is most helpful when writing your own functions. You also learned how to use ``tapply()`` to split your data into groups based on the value of some variable, then apply a function to each group. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
