@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
+<title>data.table how does it work</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; left: -4em; }
+pre.numberSource a.sourceLine::before
+  { content: attr(data-line-number);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#header {
+text-align: center;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">data.table how does it work</h1>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="kw">library</span> (data.table)</a></code></pre></div>
+<div id="general-form" class="section level2">
+<h2>General form</h2>
+<p>The general form of a <code>data.table</code> query is <code>[i, j, by]</code>. The 3 parts of the query can be mapped to SQL as <em>i</em> = where, <em>j</em> = select, and <em>by</em> = group by.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1">mtcarsDT &lt;-<span class="st"> </span><span class="kw">data.table</span> (mtcars)</a>
+<a class="sourceLine" id="cb2-2" data-line-number="2">mtcarsDT</a></code></pre></div>
+<pre><code>##      mpg cyl  disp  hp drat    wt  qsec vs am gear carb
+##  1: 21.0   6 160.0 110 3.90 2.620 16.46  0  1    4    4
+##  2: 21.0   6 160.0 110 3.90 2.875 17.02  0  1    4    4
+##  3: 22.8   4 108.0  93 3.85 2.320 18.61  1  1    4    1
+##  4: 21.4   6 258.0 110 3.08 3.215 19.44  1  0    3    1
+##  5: 18.7   8 360.0 175 3.15 3.440 17.02  0  0    3    2
+##  6: 18.1   6 225.0 105 2.76 3.460 20.22  1  0    3    1
+##  7: 14.3   8 360.0 245 3.21 3.570 15.84  0  0    3    4
+##  8: 24.4   4 146.7  62 3.69 3.190 20.00  1  0    4    2
+##  9: 22.8   4 140.8  95 3.92 3.150 22.90  1  0    4    2
+## 10: 19.2   6 167.6 123 3.92 3.440 18.30  1  0    4    4
+## 11: 17.8   6 167.6 123 3.92 3.440 18.90  1  0    4    4
+## 12: 16.4   8 275.8 180 3.07 4.070 17.40  0  0    3    3
+## 13: 17.3   8 275.8 180 3.07 3.730 17.60  0  0    3    3
+## 14: 15.2   8 275.8 180 3.07 3.780 18.00  0  0    3    3
+## 15: 10.4   8 472.0 205 2.93 5.250 17.98  0  0    3    4
+## 16: 10.4   8 460.0 215 3.00 5.424 17.82  0  0    3    4
+## 17: 14.7   8 440.0 230 3.23 5.345 17.42  0  0    3    4
+## 18: 32.4   4  78.7  66 4.08 2.200 19.47  1  1    4    1
+## 19: 30.4   4  75.7  52 4.93 1.615 18.52  1  1    4    2
+## 20: 33.9   4  71.1  65 4.22 1.835 19.90  1  1    4    1
+## 21: 21.5   4 120.1  97 3.70 2.465 20.01  1  0    3    1
+## 22: 15.5   8 318.0 150 2.76 3.520 16.87  0  0    3    2
+## 23: 15.2   8 304.0 150 3.15 3.435 17.30  0  0    3    2
+## 24: 13.3   8 350.0 245 3.73 3.840 15.41  0  0    3    4
+## 25: 19.2   8 400.0 175 3.08 3.845 17.05  0  0    3    2
+## 26: 27.3   4  79.0  66 4.08 1.935 18.90  1  1    4    1
+## 27: 26.0   4 120.3  91 4.43 2.140 16.70  0  1    5    2
+## 28: 30.4   4  95.1 113 3.77 1.513 16.90  1  1    5    2
+## 29: 15.8   8 351.0 264 4.22 3.170 14.50  0  1    5    4
+## 30: 19.7   6 145.0 175 3.62 2.770 15.50  0  1    5    6
+## 31: 15.0   8 301.0 335 3.54 3.570 14.60  0  1    5    8
+## 32: 21.4   4 121.0 109 4.11 2.780 18.60  1  1    4    2
+##      mpg cyl  disp  hp drat    wt  qsec vs am gear carb</code></pre>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1">mtcarsDT [mpg <span class="op">&gt;</span><span class="st"> </span><span class="dv">20</span>,</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">          .(<span class="dt">AvgHP =</span> <span class="kw">mean</span>(hp),</a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">            <span class="st">&quot;minWT(kg)&quot;</span> =<span class="st"> </span><span class="kw">min</span> (wt <span class="op">+</span><span class="st"> </span><span class="fl">453.6</span>)), <span class="co"># wt in lbs</span></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">          by =<span class="st"> </span>.(cyl, <span class="dt">under5gears =</span> gear <span class="op">&lt;</span><span class="st"> </span><span class="dv">5</span>)]</a></code></pre></div>
+<pre><code>##    cyl under5gears     AvgHP minWT(kg)
+## 1:   6        TRUE 110.00000   456.220
+## 2:   4        TRUE  78.33333   455.215
+## 3:   4       FALSE 102.00000   455.113</code></pre>
+<blockquote>
+<p>Take DT, subset rows using <em>i</em>, then calculate <em>j</em> grouped by <em>by</em></p>
+</blockquote>
+<p>In creation of a <code>data.table</code>, use <code>L</code> after a numeric to specify that it is an integer (NOT <em>numeric</em>). Give columns with different lengths, and R will “recycle” the shorter column to match the length of the longer one by re-using the first items</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="co">## Create a data.table</span></a>
+<a class="sourceLine" id="cb6-2" data-line-number="2"><span class="co">## Column a will be of integer type</span></a>
+<a class="sourceLine" id="cb6-3" data-line-number="3">DT &lt;-<span class="st"> </span><span class="kw">data.table</span>(<span class="dt">a =</span> <span class="kw">c</span>(1L, 2L), <span class="dt">b =</span> LETTERS[<span class="dv">1</span><span class="op">:</span><span class="dv">4</span>])</a>
+<a class="sourceLine" id="cb6-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb6-5" data-line-number="5"><span class="co">## Create another data.table</span></a>
+<a class="sourceLine" id="cb6-6" data-line-number="6"><span class="co">## Columns B and C will be cycling</span></a>
+<a class="sourceLine" id="cb6-7" data-line-number="7">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (<span class="dt">A =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">6</span>, <span class="dt">B =</span> <span class="kw">c</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>), <span class="dt">C =</span> <span class="kw">rnorm</span> (<span class="dv">6</span>), <span class="dt">D =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+</div>
+<div id="selecting-rows-by-number-in-i" class="section level2">
+<h2>Selecting rows by number in <em>i</em></h2>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" data-line-number="1">DT [<span class="dv">3</span><span class="op">:</span><span class="dv">5</span>,]</a></code></pre></div>
+<pre><code>##    A B          C    D
+## 1: 3 c -2.2805453 TRUE
+## 2: 4 a -0.1179344 TRUE
+## 3: 5 b -1.5610129 TRUE</code></pre>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" data-line-number="1">DT [<span class="dv">3</span><span class="op">:</span><span class="dv">5</span>] <span class="co"># same thing, unlike data.frame</span></a></code></pre></div>
+<pre><code>##    A B          C    D
+## 1: 3 c -2.2805453 TRUE
+## 2: 4 a -0.1179344 TRUE
+## 3: 5 b -1.5610129 TRUE</code></pre>
+</div>
+<div id="compatibility" class="section level2">
+<h2>Compatibility</h2>
+<p><code>data.table</code> is a <code>data.frame</code> too. It is accepted by all base R packages.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" data-line-number="1"><span class="kw">class</span> (DT)</a></code></pre></div>
+<pre><code>## [1] &quot;data.table&quot; &quot;data.frame&quot;</code></pre>
+<p>When a <code>data.table</code> is called by a function, it looks to see where it is called from. When it is called by a package which does not recognize <code>data.table</code>, it will switch <code>data.frame</code>, and it will still work.</p>
+<p>The <code>.N</code> in <code>data.table</code> means number of rows</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb13-1" data-line-number="1">DT [.N]</a></code></pre></div>
+<pre><code>##    A B          C    D
+## 1: 6 c -0.7767423 TRUE</code></pre>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb15-1" data-line-number="1">DT [<span class="kw">nrow</span>(DT)] <span class="co"># same thing</span></a></code></pre></div>
+<pre><code>##    A B          C    D
+## 1: 6 c -0.7767423 TRUE</code></pre>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb17-1" data-line-number="1"><span class="co"># Select the second to last row</span></a>
+<a class="sourceLine" id="cb17-2" data-line-number="2">DT [.N<span class="dv">-1</span>]</a></code></pre></div>
+<pre><code>##    A B         C    D
+## 1: 5 b -1.561013 TRUE</code></pre>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb19-1" data-line-number="1"><span class="co"># Names and dimensions</span></a>
+<a class="sourceLine" id="cb19-2" data-line-number="2"><span class="kw">names</span> (DT)</a></code></pre></div>
+<pre><code>## [1] &quot;A&quot; &quot;B&quot; &quot;C&quot; &quot;D&quot;</code></pre>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb21-1" data-line-number="1"><span class="kw">dim</span> (DT)</a></code></pre></div>
+<pre><code>## [1] 6 4</code></pre>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb23-1" data-line-number="1"><span class="co"># Selective subsetting</span></a>
+<a class="sourceLine" id="cb23-2" data-line-number="2">DT [<span class="kw">c</span> (<span class="dv">2</span>, <span class="dv">2</span>, <span class="dv">3</span>)]</a></code></pre></div>
+<pre><code>##    A B          C    D
+## 1: 2 b -0.9904338 TRUE
+## 2: 2 b -0.9904338 TRUE
+## 3: 3 c -2.2805453 TRUE</code></pre>
+</div>
+<div id="sececting-columns-in-j" class="section level2">
+<h2>Sececting columns in <em>j</em></h2>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb25-1" data-line-number="1">DT [, .(B, C)] <span class="co"># .() is an alias to list() in data.tables and they mean the same</span></a></code></pre></div>
+<pre><code>##    B          C
+## 1: a  0.8641541
+## 2: b -0.9904338
+## 3: c -2.2805453
+## 4: a -0.1179344
+## 5: b -1.5610129
+## 6: c -0.7767423</code></pre>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb27-1" data-line-number="1">DT [<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>), .(B, C)] <span class="co"># a vector is required for i</span></a></code></pre></div>
+<pre><code>##    B          C
+## 1: a  0.8641541
+## 2: c -2.2805453</code></pre>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb29-1" data-line-number="1"><span class="co"># Object or Column names?</span></a>
+<a class="sourceLine" id="cb29-2" data-line-number="2">B &lt;-<span class="st"> </span><span class="dv">3</span></a>
+<a class="sourceLine" id="cb29-3" data-line-number="3">DT [, .(B)]</a></code></pre></div>
+<pre><code>##    B
+## 1: a
+## 2: b
+## 3: c
+## 4: a
+## 5: b
+## 6: c</code></pre>
+<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb31-1" data-line-number="1">DT [, B]</a></code></pre></div>
+<pre><code>## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot; &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+</div>
+<div id="computing-on-columns" class="section level2">
+<h2>Computing on columns</h2>
+<p>Call functions on the columns as if the columns were variables. We can provide new column names while computing. If we don’t, column names will be assigned automatically.</p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb33-1" data-line-number="1">DT [, .(<span class="dt">Total =</span> <span class="kw">sum</span>(A), <span class="dt">Mean =</span> <span class="kw">mean</span>(C))]</a></code></pre></div>
+<pre><code>##    Total       Mean
+## 1:    21 -0.8104191</code></pre>
+<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb35-1" data-line-number="1"><span class="co"># No column names</span></a>
+<a class="sourceLine" id="cb35-2" data-line-number="2">DT [, .(<span class="kw">sum</span>(A), <span class="kw">mean</span>(C))]</a></code></pre></div>
+<pre><code>##    V1         V2
+## 1: 21 -0.8104191</code></pre>
+</div>
+<div id="recying-in-j" class="section level2">
+<h2>Recying in <em>j</em></h2>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb37-1" data-line-number="1"><span class="co"># The value of C will be recycled to fit the length of B</span></a>
+<a class="sourceLine" id="cb37-2" data-line-number="2">DT [, .(B, <span class="dt">C =</span> <span class="kw">sum</span> (C))]</a></code></pre></div>
+<pre><code>##    B         C
+## 1: a -4.862515
+## 2: b -4.862515
+## 3: c -4.862515
+## 4: a -4.862515
+## 5: b -4.862515
+## 6: c -4.862515</code></pre>
+</div>
+<div id="throw-anything-into-j" class="section level2">
+<h2>Throw anything into J</h2>
+<p>without even giving a value</p>
+<div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb39-1" data-line-number="1"><span class="co"># A plot and a Null value will be returned</span></a>
+<a class="sourceLine" id="cb39-2" data-line-number="2">DT [, <span class="kw">plot</span> (A, C)]</a></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<pre><code>## NULL</code></pre>
+<p>Throw multiple actions in curly brackets</p>
+<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb41-1" data-line-number="1">DT [, {<span class="kw">print</span>(A)</a>
+<a class="sourceLine" id="cb41-2" data-line-number="2">  <span class="kw">hist</span>(C)</a>
+<a class="sourceLine" id="cb41-3" data-line-number="3">  <span class="ot">NULL</span>}] <span class="co"># set NULL to plot C instead of counting C values</span></a></code></pre></div>
+<pre><code>## [1] 1 2 3 4 5 6</code></pre>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<pre><code>## NULL</code></pre>
+</div>
+<div id="doing-j-by-group" class="section level2">
+<h2>Doing <em>j</em> by group</h2>
+<div class="sourceCode" id="cb44"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb44-1" data-line-number="1"><span class="co"># the groups are returned in order as they appear in the original DT</span></a>
+<a class="sourceLine" id="cb44-2" data-line-number="2">DT [, .(<span class="dt">mySum =</span> <span class="kw">sum</span>(A),</a>
+<a class="sourceLine" id="cb44-3" data-line-number="3">        <span class="dt">myMean =</span> <span class="kw">mean</span>(A)),</a>
+<a class="sourceLine" id="cb44-4" data-line-number="4">    by =<span class="st"> </span>.(B)]</a></code></pre></div>
+<pre><code>##    B mySum myMean
+## 1: a     5    2.5
+## 2: b     7    3.5
+## 3: c     9    4.5</code></pre>
+</div>
+<div id="function-calls-in-by" class="section level2">
+<h2>Function calls in <em>by</em></h2>
+<div class="sourceCode" id="cb46"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb46-1" data-line-number="1">DT [, .(<span class="dt">mySum =</span> <span class="kw">sum</span>(C)), by =<span class="st"> </span>.(<span class="dt">Grp =</span> A<span class="op">%%</span><span class="dv">2</span>)]</a></code></pre></div>
+<pre><code>##    Grp     mySum
+## 1:   1 -2.977404
+## 2:   0 -1.885111</code></pre>
+<div class="sourceCode" id="cb48"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb48-1" data-line-number="1"><span class="co"># if you just have one items each, you can do this:</span></a>
+<a class="sourceLine" id="cb48-2" data-line-number="2">DT [, <span class="kw">sum</span>(C), by =<span class="st"> </span>A<span class="op">%%</span><span class="dv">2</span>]</a></code></pre></div>
+<pre><code>##    A        V1
+## 1: 1 -2.977404
+## 2: 0 -1.885111</code></pre>
+</div>
+<div id="grouping-only-on-the-subset" class="section level2">
+<h2>Grouping only on the subset</h2>
+<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb50-1" data-line-number="1"><span class="co"># Note that the even numbers return first because of the selection</span></a>
+<a class="sourceLine" id="cb50-2" data-line-number="2">DT [<span class="dv">2</span><span class="op">:</span><span class="dv">4</span>, <span class="kw">sum</span>(C), by =<span class="st"> </span>A<span class="op">%%</span><span class="dv">2</span>]</a></code></pre></div>
+<pre><code>##    A        V1
+## 1: 0 -1.108368
+## 2: 1 -2.280545</code></pre>
+</div>
+<div id="practice-using-iris" class="section level2">
+<h2>Practice using iris</h2>
+<div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb52-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (iris)</a>
+<a class="sourceLine" id="cb52-2" data-line-number="2"><span class="kw">head</span> (DT)</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          5.1         3.5          1.4         0.2  setosa
+## 2:          4.9         3.0          1.4         0.2  setosa
+## 3:          4.7         3.2          1.3         0.2  setosa
+## 4:          4.6         3.1          1.5         0.2  setosa
+## 5:          5.0         3.6          1.4         0.2  setosa
+## 6:          5.4         3.9          1.7         0.4  setosa</code></pre>
+<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb54-1" data-line-number="1">DT [, <span class="kw">mean</span> (Sepal.Length), by =<span class="st"> </span>Species]</a></code></pre></div>
+<pre><code>##       Species    V1
+## 1:     setosa 5.006
+## 2: versicolor 5.936
+## 3:  virginica 6.588</code></pre>
+<div class="sourceCode" id="cb56"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb56-1" data-line-number="1">DT [, <span class="kw">mean</span> (Sepal.Length), by =<span class="st"> </span>.(<span class="kw">substr</span> (Species, <span class="dv">1</span>, <span class="dv">1</span>))]</a></code></pre></div>
+<pre><code>##    substr    V1
+## 1:      s 5.006
+## 2:      v 6.262</code></pre>
+<div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb58-1" data-line-number="1"><span class="co"># .N in j</span></a>
+<a class="sourceLine" id="cb58-2" data-line-number="2">DT [, .(<span class="dt">Count =</span> .N), by =<span class="st"> </span>.(<span class="dt">Area =</span> <span class="kw">round</span> (Sepal.Length<span class="op">*</span><span class="st"> </span>Sepal.Width <span class="op">/</span><span class="dv">10</span>))]</a></code></pre></div>
+<pre><code>##    Area Count
+## 1:    2   117
+## 2:    1    29
+## 3:    3     4</code></pre>
+</div>
+<div id="grouping-by-multiple-columns" class="section level2">
+<h2>Grouping by multiple columns</h2>
+<div class="sourceCode" id="cb60"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb60-1" data-line-number="1">DT [, .(<span class="dt">C =</span> <span class="kw">cumsum</span> (Sepal.Length)), .(Petal.Width, Species)]</a></code></pre></div>
+<pre><code>##      Petal.Width   Species    C
+##   1:         0.2    setosa  5.1
+##   2:         0.2    setosa 10.0
+##   3:         0.2    setosa 14.7
+##   4:         0.2    setosa 19.3
+##   5:         0.2    setosa 24.3
+##  ---                           
+## 146:         2.3 virginica 55.3
+## 147:         1.5 virginica  6.0
+## 148:         1.5 virginica 12.3
+## 149:         1.6 virginica  7.2
+## 150:         1.4 virginica  6.1</code></pre>
+<div class="sourceCode" id="cb62"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb62-1" data-line-number="1">DT [, .(<span class="dt">C =</span> <span class="kw">tail</span> (Sepal.Length, <span class="dv">2</span>)), by =<span class="st"> </span>.(Species)]</a></code></pre></div>
+<pre><code>##       Species   C
+## 1:     setosa 5.3
+## 2:     setosa 5.0
+## 3: versicolor 5.1
+## 4: versicolor 5.7
+## 5:  virginica 6.2
+## 6:  virginica 5.9</code></pre>
+</div>
+<div id="chaining-operations-together" class="section level2">
+<h2>Chaining operations together</h2>
+<div class="sourceCode" id="cb64"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb64-1" data-line-number="1"><span class="co"># in multiple statements</span></a>
+<a class="sourceLine" id="cb64-2" data-line-number="2">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (<span class="dt">A =</span> <span class="kw">c</span>(<span class="st">&quot;c&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;a&quot;</span>), <span class="dt">B =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">6</span>)</a>
+<a class="sourceLine" id="cb64-3" data-line-number="3">DT</a></code></pre></div>
+<pre><code>##    A B
+## 1: c 1
+## 2: b 2
+## 3: a 3
+## 4: c 4
+## 5: b 5
+## 6: a 6</code></pre>
+<div class="sourceCode" id="cb66"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb66-1" data-line-number="1">ans &lt;-<span class="st"> </span>DT [, <span class="kw">sum</span> (B), by =<span class="st"> </span>A]</a>
+<a class="sourceLine" id="cb66-2" data-line-number="2">ans</a></code></pre></div>
+<pre><code>##    A V1
+## 1: c  5
+## 2: b  7
+## 3: a  9</code></pre>
+<div class="sourceCode" id="cb68"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb68-1" data-line-number="1">ans [<span class="kw">order</span> (A)]</a></code></pre></div>
+<pre><code>##    A V1
+## 1: a  9
+## 2: b  7
+## 3: c  5</code></pre>
+<div class="sourceCode" id="cb70"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb70-1" data-line-number="1"><span class="co"># in one sigle single statement</span></a>
+<a class="sourceLine" id="cb70-2" data-line-number="2">DT [, <span class="kw">sum</span> (B), by =<span class="st"> </span>A] [<span class="kw">order</span> (A)]</a></code></pre></div>
+<pre><code>##    A V1
+## 1: a  9
+## 2: b  7
+## 3: c  5</code></pre>
+</div>
+<div id="chaining-the-previous-iris-example" class="section level2">
+<h2>Chaining the previous iris example</h2>
+<div class="sourceCode" id="cb72"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb72-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (iris)</a>
+<a class="sourceLine" id="cb72-2" data-line-number="2">DT [, .(<span class="dt">C =</span> <span class="kw">cumsum</span> (Sepal.Length)), .(Petal.Width, Species)][, .(<span class="dt">C =</span> <span class="kw">tail</span> (C, <span class="dv">2</span>)), by =<span class="st"> </span>.(Species)]</a></code></pre></div>
+<pre><code>##       Species    C
+## 1:     setosa  5.1
+## 2:     setosa  5.0
+## 3: versicolor 28.9
+## 4: versicolor  6.7
+## 5:  virginica  7.2
+## 6:  virginica  6.1</code></pre>
+<div class="sourceCode" id="cb74"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb74-1" data-line-number="1">DT [, .(<span class="dt">Sepal.Length =</span> <span class="kw">median</span> (Sepal.Length), </a>
+<a class="sourceLine" id="cb74-2" data-line-number="2">       <span class="dt">Sepal.Width =</span> <span class="kw">median</span> (Sepal.Width), </a>
+<a class="sourceLine" id="cb74-3" data-line-number="3">       <span class="dt">Petal.Length =</span> <span class="kw">median</span> (Petal.Length),</a>
+<a class="sourceLine" id="cb74-4" data-line-number="4">       <span class="dt">Petal.Width =</span> <span class="kw">median</span> (Petal.Width)), </a>
+<a class="sourceLine" id="cb74-5" data-line-number="5">    by =<span class="st"> </span>Species] [<span class="kw">order</span> (Species, <span class="dt">decreasing =</span> <span class="ot">TRUE</span>)]</a></code></pre></div>
+<pre><code>##       Species Sepal.Length Sepal.Width Petal.Length Petal.Width
+## 1:  virginica          6.5         3.0         5.55         2.0
+## 2: versicolor          5.9         2.8         4.35         1.3
+## 3:     setosa          5.0         3.4         1.50         0.2</code></pre>
+</div>
+<div id="subset-of-data-.sd" class="section level2">
+<h2>Subset of data: .SD</h2>
+<p>When you have too many columns and you want to perform particular operation on a subset of columns</p>
+<div class="sourceCode" id="cb76"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb76-1" data-line-number="1"><span class="co"># .SD represents all columns except those specified in by</span></a>
+<a class="sourceLine" id="cb76-2" data-line-number="2">DT [, <span class="kw">lapply</span> (.SD, median), by =<span class="st"> </span>Species]</a></code></pre></div>
+<pre><code>##       Species Sepal.Length Sepal.Width Petal.Length Petal.Width
+## 1:     setosa          5.0         3.4         1.50         0.2
+## 2: versicolor          5.9         2.8         4.35         1.3
+## 3:  virginica          6.5         3.0         5.55         2.0</code></pre>
+<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb78-1" data-line-number="1"><span class="co"># .SDcols specifies columns used in .SD</span></a>
+<a class="sourceLine" id="cb78-2" data-line-number="2">DT [, <span class="kw">lapply</span>(.SD, sum), .SDcols =<span class="dv">2</span><span class="op">:</span><span class="dv">4</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Width Petal.Length Petal.Width
+## 1:       458.6        563.7       179.9</code></pre>
+<div class="sourceCode" id="cb80"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb80-1" data-line-number="1"><span class="co"># select all but first row of the groups</span></a>
+<a class="sourceLine" id="cb80-2" data-line-number="2">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (<span class="dt">A =</span> <span class="kw">c</span>(<span class="st">&quot;c&quot;</span>, <span class="st">&quot;c&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;a&quot;</span>), <span class="dt">B =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">6</span>, <span class="dt">C =</span> <span class="ot">TRUE</span>, <span class="dt">D =</span> 5L)</a></code></pre></div>
+<pre><code>## Warning in data.table(A = c(&quot;c&quot;, &quot;c&quot;, &quot;b&quot;, &quot;a&quot;), B = 1:6, C = TRUE, D =
+## 5L): Item 1 is of size 4 but maximum size is 6 (recycled leaving remainder
+## of 2 items)</code></pre>
+<div class="sourceCode" id="cb82"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb82-1" data-line-number="1">DT</a></code></pre></div>
+<pre><code>##    A B    C D
+## 1: c 1 TRUE 5
+## 2: c 2 TRUE 5
+## 3: b 3 TRUE 5
+## 4: a 4 TRUE 5
+## 5: c 5 TRUE 5
+## 6: c 6 TRUE 5</code></pre>
+<div class="sourceCode" id="cb84"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb84-1" data-line-number="1">DT [, .SD[<span class="op">-</span><span class="dv">1</span>], .SDcols =<span class="st"> </span><span class="dv">2</span><span class="op">:</span><span class="dv">4</span>, by =<span class="st"> </span>A]</a></code></pre></div>
+<pre><code>##    A B    C D
+## 1: c 2 TRUE 5
+## 2: c 5 TRUE 5
+## 3: c 6 TRUE 5</code></pre>
+<div class="sourceCode" id="cb86"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb86-1" data-line-number="1"><span class="co"># sum all cols and number of rows</span></a>
+<a class="sourceLine" id="cb86-2" data-line-number="2">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (<span class="dt">x =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">1</span>),</a>
+<a class="sourceLine" id="cb86-3" data-line-number="3">                  <span class="dt">y =</span> <span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">3</span>,<span class="dv">5</span>,<span class="dv">7</span>,<span class="dv">9</span>,<span class="dv">11</span>,<span class="dv">13</span>),</a>
+<a class="sourceLine" id="cb86-4" data-line-number="4">                  <span class="dt">z =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>,<span class="dv">6</span>,<span class="dv">8</span>,<span class="dv">10</span>,<span class="dv">12</span>,<span class="dv">14</span>))</a>
+<a class="sourceLine" id="cb86-5" data-line-number="5">DT [, <span class="kw">c</span> (<span class="kw">lapply</span> (.SD, sum), .N), by =<span class="st"> </span>x, .SDcols =<span class="st"> </span><span class="kw">c</span> (<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;z&quot;</span>)]</a></code></pre></div>
+<pre><code>##    x x  y  z N
+## 1: 2 8 26 30 4
+## 2: 1 3 23 26 3</code></pre>
+<div class="sourceCode" id="cb88"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb88-1" data-line-number="1"><span class="co"># cumsum while grouping</span></a>
+<a class="sourceLine" id="cb88-2" data-line-number="2">DT [, <span class="kw">lapply</span> (.SD, cumsum), .SDcols =<span class="st"> </span><span class="dv">1</span><span class="op">:</span><span class="dv">2</span>, by =<span class="st"> </span>.(<span class="dt">by1 =</span> x, <span class="dt">by2 =</span> z <span class="op">&gt;</span><span class="st"> </span><span class="dv">8</span>)]</a></code></pre></div>
+<pre><code>##    by1   by2 x  y
+## 1:   2 FALSE 2  1
+## 2:   2 FALSE 4  6
+## 3:   1 FALSE 1  3
+## 4:   1 FALSE 2 10
+## 5:   2  TRUE 2  9
+## 6:   2  TRUE 4 20
+## 7:   1  TRUE 1 13</code></pre>
+</div>
+<div id="addupdate-columns-in-j-using" class="section level2">
+<h2>Add/update columns in <em>j</em> using :=</h2>
+<div class="sourceCode" id="cb90"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb90-1" data-line-number="1">DT</a></code></pre></div>
+<pre><code>##    x  y  z
+## 1: 2  1  2
+## 2: 1  3  4
+## 3: 2  5  6
+## 4: 1  7  8
+## 5: 2  9 10
+## 6: 2 11 12
+## 7: 1 13 14</code></pre>
+<div class="sourceCode" id="cb92"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb92-1" data-line-number="1"><span class="co"># Add</span></a>
+<a class="sourceLine" id="cb92-2" data-line-number="2">DT [, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;p&quot;</span>) <span class="op">:</span><span class="er">=</span><span class="st"> </span>.(<span class="kw">rev</span>(x), <span class="dv">1</span><span class="op">:</span><span class="dv">7</span>)]</a>
+<a class="sourceLine" id="cb92-3" data-line-number="3">DT</a></code></pre></div>
+<pre><code>##    x  y  z p
+## 1: 1  1  2 1
+## 2: 2  3  4 2
+## 3: 2  5  6 3
+## 4: 1  7  8 4
+## 5: 2  9 10 5
+## 6: 1 11 12 6
+## 7: 2 13 14 7</code></pre>
+<div class="sourceCode" id="cb94"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb94-1" data-line-number="1">DT [, x <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="kw">rev</span>(x)] <span class="co"># short expression</span></a>
+<a class="sourceLine" id="cb94-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    x  y  z p
+## 1: 2  1  2 1
+## 2: 1  3  4 2
+## 3: 2  5  6 3
+## 4: 1  7  8 4
+## 5: 2  9 10 5
+## 6: 2 11 12 6
+## 7: 1 13 14 7</code></pre>
+<div class="sourceCode" id="cb96"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb96-1" data-line-number="1"><span class="co"># Remove</span></a>
+<a class="sourceLine" id="cb96-2" data-line-number="2">DT [, <span class="kw">c</span>(<span class="st">&quot;y&quot;</span>, <span class="st">&quot;z&quot;</span>) <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="ot">NULL</span>]</a>
+<a class="sourceLine" id="cb96-3" data-line-number="3">DT [, z <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="ot">NULL</span>] <span class="co"># short expression</span></a></code></pre></div>
+<pre><code>## Warning in `[.data.table`(DT, , `:=`(z, NULL)): Column 'z' does not exist
+## to remove</code></pre>
+<div class="sourceCode" id="cb98"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb98-1" data-line-number="1">DT</a></code></pre></div>
+<pre><code>##    x p
+## 1: 2 1
+## 2: 1 2
+## 3: 2 3
+## 4: 1 4
+## 5: 2 5
+## 6: 2 6
+## 7: 1 7</code></pre>
+<div class="sourceCode" id="cb100"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb100-1" data-line-number="1"><span class="co"># use objects</span></a>
+<a class="sourceLine" id="cb100-2" data-line-number="2">myCol &lt;-<span class="st"> </span><span class="kw">c</span> (<span class="st">&quot;x&quot;</span>, <span class="st">&quot;p&quot;</span>)</a>
+<a class="sourceLine" id="cb100-3" data-line-number="3">DT [, (myCol) <span class="op">:</span><span class="er">=</span><span class="st"> </span>.(<span class="kw">rev</span>(x), <span class="dv">1</span><span class="op">:</span><span class="dv">7</span>)] <span class="co"># wrap in (), or it's recognized as column names</span></a>
+<a class="sourceLine" id="cb100-4" data-line-number="4">DT</a></code></pre></div>
+<pre><code>##    x p
+## 1: 1 1
+## 2: 2 2
+## 3: 2 3
+## 4: 1 4
+## 5: 2 5
+## 6: 1 6
+## 7: 2 7</code></pre>
+<div class="sourceCode" id="cb102"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb102-1" data-line-number="1"><span class="co"># assign multiple columns</span></a>
+<a class="sourceLine" id="cb102-2" data-line-number="2">DT [, <span class="st">&quot;:=&quot;</span> (<span class="dt">y =</span> x<span class="op">*</span><span class="dv">2</span>,</a>
+<a class="sourceLine" id="cb102-3" data-line-number="3">            <span class="dt">q =</span> p<span class="op">+</span><span class="dv">1</span>)]</a>
+<a class="sourceLine" id="cb102-4" data-line-number="4">DT</a></code></pre></div>
+<pre><code>##    x p y q
+## 1: 1 1 2 2
+## 2: 2 2 4 3
+## 3: 2 3 4 4
+## 4: 1 4 2 5
+## 5: 2 5 4 6
+## 6: 1 6 2 7
+## 7: 2 7 4 8</code></pre>
+</div>
+<div id="cimbined-with-i-and-by" class="section level2">
+<h2>:= cimbined with <em>i</em> and <em>by</em></h2>
+<div class="sourceCode" id="cb104"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb104-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (<span class="dt">x =</span> <span class="kw">c</span> (<span class="dv">2</span>, <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>), <span class="dt">y =</span> <span class="dv">6</span><span class="op">:</span><span class="dv">10</span>)</a>
+<a class="sourceLine" id="cb104-2" data-line-number="2">DT [<span class="dv">2</span><span class="op">:</span><span class="dv">4</span>, z <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="kw">sum</span> (y), by =<span class="st"> </span>x]</a>
+<a class="sourceLine" id="cb104-3" data-line-number="3">DT</a></code></pre></div>
+<pre><code>##    x  y  z
+## 1: 2  6 NA
+## 2: 2  7  7
+## 3: 1  8 17
+## 4: 1  9 17
+## 5: 1 10 NA</code></pre>
+</div>
+<div id="addupdate-multiple-columns" class="section level2">
+<h2>Add/update multiple columns</h2>
+<div class="sourceCode" id="cb106"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb106-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (<span class="dt">A =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">2</span>), <span class="dt">B =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">5</span>)</a>
+<a class="sourceLine" id="cb106-2" data-line-number="2">DT [,<span class="st">&quot;:=&quot;</span>(<span class="dt">B =</span> B <span class="op">+</span><span class="st"> </span><span class="dv">1</span>, <span class="dt">C =</span> A <span class="op">+</span><span class="st"> </span>B, <span class="dt">D =</span> <span class="dv">2</span>)]</a>
+<a class="sourceLine" id="cb106-3" data-line-number="3">DT</a></code></pre></div>
+<pre><code>##    A B C D
+## 1: 1 2 2 2
+## 2: 1 3 3 2
+## 3: 1 4 4 2
+## 4: 2 5 6 2
+## 5: 2 6 7 2</code></pre>
+</div>
+<div id="delete-by-col-number" class="section level2">
+<h2>Delete by col number</h2>
+<div class="sourceCode" id="cb108"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb108-1" data-line-number="1">DT [, <span class="dv">2</span> <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="ot">NULL</span>]</a>
+<a class="sourceLine" id="cb108-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    A C D
+## 1: 1 2 2
+## 2: 1 3 2
+## 3: 1 4 2
+## 4: 2 6 2
+## 5: 2 7 2</code></pre>
+</div>
+<div id="set" class="section level2">
+<h2>set()</h2>
+<p>repeated update data by reference</p>
+<div class="sourceCode" id="cb110"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb110-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (<span class="dt">x =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">5</span>, <span class="dt">y =</span> <span class="kw">c</span> (<span class="dv">1</span>, <span class="dv">8</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>), <span class="dt">z =</span> <span class="kw">c</span> (<span class="dv">2</span>, <span class="dv">5</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">3</span>))</a>
+<a class="sourceLine" id="cb110-2" data-line-number="2"><span class="co"># update the 1:5 rows of the 3rd column into new values</span></a>
+<a class="sourceLine" id="cb110-3" data-line-number="3"><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="dv">5</span>) DT [i, z <span class="op">:</span><span class="er">=</span><span class="st"> </span>i <span class="op">+</span><span class="st"> </span><span class="dv">1</span>]</a>
+<a class="sourceLine" id="cb110-4" data-line-number="4"><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="dv">5</span>) <span class="kw">set</span> (DT, i, 3L, i <span class="op">+</span><span class="st"> </span><span class="dv">1</span>) <span class="co"># a better way</span></a>
+<a class="sourceLine" id="cb110-5" data-line-number="5">DT</a>
+<a class="sourceLine" id="cb110-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb110-7" data-line-number="7"><span class="co"># set random 3 rows to NA</span></a>
+<a class="sourceLine" id="cb110-8" data-line-number="8"><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">2</span><span class="op">:</span><span class="dv">3</span>) <span class="kw">set</span>(DT, <span class="kw">sample</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">5</span>, <span class="dv">3</span>), i, <span class="ot">NA</span>)</a>
+<a class="sourceLine" id="cb110-9" data-line-number="9">DT</a></code></pre></div>
+<pre><code>##    x  y  z
+## 1: 1  1  2
+## 2: 2  8  3
+## 3: 3 NA NA
+## 4: 4 NA NA
+## 5: 5 NA NA</code></pre>
+</div>
+<div id="setnames" class="section level2">
+<h2>setnames()</h2>
+<div class="sourceCode" id="cb112"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb112-1" data-line-number="1"><span class="kw">setnames</span> (DT, <span class="st">&quot;z&quot;</span>, <span class="st">&quot;p&quot;</span>)</a>
+<a class="sourceLine" id="cb112-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    x  y  p
+## 1: 1  1  2
+## 2: 2  8  3
+## 3: 3 NA NA
+## 4: 4 NA NA
+## 5: 5 NA NA</code></pre>
+<div class="sourceCode" id="cb114"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb114-1" data-line-number="1"><span class="kw">setnames</span> (DT, <span class="kw">names</span> (DT), <span class="kw">toupper</span> (<span class="kw">names</span>(DT)))</a>
+<a class="sourceLine" id="cb114-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    X  Y  P
+## 1: 1  1  2
+## 2: 2  8  3
+## 3: 3 NA NA
+## 4: 4 NA NA
+## 5: 5 NA NA</code></pre>
+</div>
+<div id="setcolorder" class="section level2">
+<h2>setcolorder()</h2>
+<div class="sourceCode" id="cb116"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb116-1" data-line-number="1"><span class="kw">setcolorder</span> (DT, <span class="kw">c</span>(<span class="st">&quot;P&quot;</span>, <span class="st">&quot;X&quot;</span>, <span class="st">&quot;Y&quot;</span>))</a>
+<a class="sourceLine" id="cb116-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##     P X  Y
+## 1:  2 1  1
+## 2:  3 2  8
+## 3: NA 3 NA
+## 4: NA 4 NA
+## 5: NA 5 NA</code></pre>
+</div>
+<div id="the-set-family" class="section level2">
+<h2>The <code>set</code> family</h2>
+<div class="sourceCode" id="cb118"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb118-1" data-line-number="1"><span class="kw">setnames</span> (DT, <span class="kw">names</span> (DT), <span class="kw">paste0</span> (<span class="kw">names</span> (DT), <span class="st">&quot;_2&quot;</span>))</a>
+<a class="sourceLine" id="cb118-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    P_2 X_2 Y_2
+## 1:   2   1   1
+## 2:   3   2   8
+## 3:  NA   3  NA
+## 4:  NA   4  NA
+## 5:  NA   5  NA</code></pre>
+<div class="sourceCode" id="cb120"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb120-1" data-line-number="1"><span class="kw">setcolorder</span> (DT, <span class="kw">rev</span> (<span class="kw">names</span> (DT)))</a>
+<a class="sourceLine" id="cb120-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    Y_2 X_2 P_2
+## 1:   1   1   2
+## 2:   8   2   3
+## 3:  NA   3  NA
+## 4:  NA   4  NA
+## 5:  NA   5  NA</code></pre>
+</div>
+<div id="using-column-names-in-i" class="section level2">
+<h2>Using column names in i</h2>
+<div class="sourceCode" id="cb122"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb122-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (<span class="dt">A =</span> <span class="kw">c</span>(<span class="st">&quot;c&quot;</span>, <span class="st">&quot;b&quot;</span>, <span class="st">&quot;a&quot;</span>), <span class="dt">B =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">6</span>)</a>
+<a class="sourceLine" id="cb122-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    A B
+## 1: c 1
+## 2: b 2
+## 3: a 3
+## 4: c 4
+## 5: b 5
+## 6: a 6</code></pre>
+<div class="sourceCode" id="cb124"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb124-1" data-line-number="1">DT [A <span class="op">==</span><span class="st"> &quot;a&quot;</span>]</a></code></pre></div>
+<pre><code>##    A B
+## 1: a 3
+## 2: a 6</code></pre>
+<div class="sourceCode" id="cb126"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb126-1" data-line-number="1">DT [A <span class="op">%in%</span><span class="st"> </span><span class="kw">c</span> (<span class="st">&quot;a&quot;</span>, <span class="st">&quot;c&quot;</span>)]</a></code></pre></div>
+<pre><code>##    A B
+## 1: c 1
+## 2: a 3
+## 3: c 4
+## 4: a 6</code></pre>
+<div class="sourceCode" id="cb128"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb128-1" data-line-number="1"><span class="co"># Indexing</span></a>
+<a class="sourceLine" id="cb128-2" data-line-number="2">w &lt;-<span class="st"> </span>DT [, A <span class="op">==</span><span class="st"> &quot;a&quot;</span>] <span class="co"># return a vector if not wrapped in .()</span></a>
+<a class="sourceLine" id="cb128-3" data-line-number="3">w</a></code></pre></div>
+<pre><code>## [1] FALSE FALSE  TRUE FALSE FALSE  TRUE</code></pre>
+<div class="sourceCode" id="cb130"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb130-1" data-line-number="1">DT [w]</a></code></pre></div>
+<pre><code>##    A B
+## 1: a 3
+## 2: a 6</code></pre>
+</div>
+<div id="indexing-using-iris" class="section level2">
+<h2>Indexing using iris</h2>
+<div class="sourceCode" id="cb132"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb132-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span>(iris)</a>
+<a class="sourceLine" id="cb132-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb132-3" data-line-number="3"><span class="co"># Species is &quot;virginica&quot;</span></a>
+<a class="sourceLine" id="cb132-4" data-line-number="4">DT [Species <span class="op">==</span><span class="st"> &quot;virginica&quot;</span>]</a></code></pre></div>
+<pre><code>##     Sepal.Length Sepal.Width Petal.Length Petal.Width   Species
+##  1:          6.3         3.3          6.0         2.5 virginica
+##  2:          5.8         2.7          5.1         1.9 virginica
+##  3:          7.1         3.0          5.9         2.1 virginica
+##  4:          6.3         2.9          5.6         1.8 virginica
+##  5:          6.5         3.0          5.8         2.2 virginica
+##  6:          7.6         3.0          6.6         2.1 virginica
+##  7:          4.9         2.5          4.5         1.7 virginica
+##  8:          7.3         2.9          6.3         1.8 virginica
+##  9:          6.7         2.5          5.8         1.8 virginica
+## 10:          7.2         3.6          6.1         2.5 virginica
+## 11:          6.5         3.2          5.1         2.0 virginica
+## 12:          6.4         2.7          5.3         1.9 virginica
+## 13:          6.8         3.0          5.5         2.1 virginica
+## 14:          5.7         2.5          5.0         2.0 virginica
+## 15:          5.8         2.8          5.1         2.4 virginica
+## 16:          6.4         3.2          5.3         2.3 virginica
+## 17:          6.5         3.0          5.5         1.8 virginica
+## 18:          7.7         3.8          6.7         2.2 virginica
+## 19:          7.7         2.6          6.9         2.3 virginica
+## 20:          6.0         2.2          5.0         1.5 virginica
+## 21:          6.9         3.2          5.7         2.3 virginica
+## 22:          5.6         2.8          4.9         2.0 virginica
+## 23:          7.7         2.8          6.7         2.0 virginica
+## 24:          6.3         2.7          4.9         1.8 virginica
+## 25:          6.7         3.3          5.7         2.1 virginica
+## 26:          7.2         3.2          6.0         1.8 virginica
+## 27:          6.2         2.8          4.8         1.8 virginica
+## 28:          6.1         3.0          4.9         1.8 virginica
+## 29:          6.4         2.8          5.6         2.1 virginica
+## 30:          7.2         3.0          5.8         1.6 virginica
+## 31:          7.4         2.8          6.1         1.9 virginica
+## 32:          7.9         3.8          6.4         2.0 virginica
+## 33:          6.4         2.8          5.6         2.2 virginica
+## 34:          6.3         2.8          5.1         1.5 virginica
+## 35:          6.1         2.6          5.6         1.4 virginica
+## 36:          7.7         3.0          6.1         2.3 virginica
+## 37:          6.3         3.4          5.6         2.4 virginica
+## 38:          6.4         3.1          5.5         1.8 virginica
+## 39:          6.0         3.0          4.8         1.8 virginica
+## 40:          6.9         3.1          5.4         2.1 virginica
+## 41:          6.7         3.1          5.6         2.4 virginica
+## 42:          6.9         3.1          5.1         2.3 virginica
+## 43:          5.8         2.7          5.1         1.9 virginica
+## 44:          6.8         3.2          5.9         2.3 virginica
+## 45:          6.7         3.3          5.7         2.5 virginica
+## 46:          6.7         3.0          5.2         2.3 virginica
+## 47:          6.3         2.5          5.0         1.9 virginica
+## 48:          6.5         3.0          5.2         2.0 virginica
+## 49:          6.2         3.4          5.4         2.3 virginica
+## 50:          5.9         3.0          5.1         1.8 virginica
+##     Sepal.Length Sepal.Width Petal.Length Petal.Width   Species</code></pre>
+<div class="sourceCode" id="cb134"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb134-1" data-line-number="1"><span class="co"># Species is either &quot;virginica&quot; or &quot;versicolor&quot;</span></a>
+<a class="sourceLine" id="cb134-2" data-line-number="2">DT [Species <span class="op">%in%</span><span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;virginica&quot;</span>, <span class="st">&quot;versicolor&quot;</span>)]</a></code></pre></div>
+<pre><code>##      Sepal.Length Sepal.Width Petal.Length Petal.Width    Species
+##   1:          7.0         3.2          4.7         1.4 versicolor
+##   2:          6.4         3.2          4.5         1.5 versicolor
+##   3:          6.9         3.1          4.9         1.5 versicolor
+##   4:          5.5         2.3          4.0         1.3 versicolor
+##   5:          6.5         2.8          4.6         1.5 versicolor
+##   6:          5.7         2.8          4.5         1.3 versicolor
+##   7:          6.3         3.3          4.7         1.6 versicolor
+##   8:          4.9         2.4          3.3         1.0 versicolor
+##   9:          6.6         2.9          4.6         1.3 versicolor
+##  10:          5.2         2.7          3.9         1.4 versicolor
+##  11:          5.0         2.0          3.5         1.0 versicolor
+##  12:          5.9         3.0          4.2         1.5 versicolor
+##  13:          6.0         2.2          4.0         1.0 versicolor
+##  14:          6.1         2.9          4.7         1.4 versicolor
+##  15:          5.6         2.9          3.6         1.3 versicolor
+##  16:          6.7         3.1          4.4         1.4 versicolor
+##  17:          5.6         3.0          4.5         1.5 versicolor
+##  18:          5.8         2.7          4.1         1.0 versicolor
+##  19:          6.2         2.2          4.5         1.5 versicolor
+##  20:          5.6         2.5          3.9         1.1 versicolor
+##  21:          5.9         3.2          4.8         1.8 versicolor
+##  22:          6.1         2.8          4.0         1.3 versicolor
+##  23:          6.3         2.5          4.9         1.5 versicolor
+##  24:          6.1         2.8          4.7         1.2 versicolor
+##  25:          6.4         2.9          4.3         1.3 versicolor
+##  26:          6.6         3.0          4.4         1.4 versicolor
+##  27:          6.8         2.8          4.8         1.4 versicolor
+##  28:          6.7         3.0          5.0         1.7 versicolor
+##  29:          6.0         2.9          4.5         1.5 versicolor
+##  30:          5.7         2.6          3.5         1.0 versicolor
+##  31:          5.5         2.4          3.8         1.1 versicolor
+##  32:          5.5         2.4          3.7         1.0 versicolor
+##  33:          5.8         2.7          3.9         1.2 versicolor
+##  34:          6.0         2.7          5.1         1.6 versicolor
+##  35:          5.4         3.0          4.5         1.5 versicolor
+##  36:          6.0         3.4          4.5         1.6 versicolor
+##  37:          6.7         3.1          4.7         1.5 versicolor
+##  38:          6.3         2.3          4.4         1.3 versicolor
+##  39:          5.6         3.0          4.1         1.3 versicolor
+##  40:          5.5         2.5          4.0         1.3 versicolor
+##  41:          5.5         2.6          4.4         1.2 versicolor
+##  42:          6.1         3.0          4.6         1.4 versicolor
+##  43:          5.8         2.6          4.0         1.2 versicolor
+##  44:          5.0         2.3          3.3         1.0 versicolor
+##  45:          5.6         2.7          4.2         1.3 versicolor
+##  46:          5.7         3.0          4.2         1.2 versicolor
+##  47:          5.7         2.9          4.2         1.3 versicolor
+##  48:          6.2         2.9          4.3         1.3 versicolor
+##  49:          5.1         2.5          3.0         1.1 versicolor
+##  50:          5.7         2.8          4.1         1.3 versicolor
+##  51:          6.3         3.3          6.0         2.5  virginica
+##  52:          5.8         2.7          5.1         1.9  virginica
+##  53:          7.1         3.0          5.9         2.1  virginica
+##  54:          6.3         2.9          5.6         1.8  virginica
+##  55:          6.5         3.0          5.8         2.2  virginica
+##  56:          7.6         3.0          6.6         2.1  virginica
+##  57:          4.9         2.5          4.5         1.7  virginica
+##  58:          7.3         2.9          6.3         1.8  virginica
+##  59:          6.7         2.5          5.8         1.8  virginica
+##  60:          7.2         3.6          6.1         2.5  virginica
+##  61:          6.5         3.2          5.1         2.0  virginica
+##  62:          6.4         2.7          5.3         1.9  virginica
+##  63:          6.8         3.0          5.5         2.1  virginica
+##  64:          5.7         2.5          5.0         2.0  virginica
+##  65:          5.8         2.8          5.1         2.4  virginica
+##  66:          6.4         3.2          5.3         2.3  virginica
+##  67:          6.5         3.0          5.5         1.8  virginica
+##  68:          7.7         3.8          6.7         2.2  virginica
+##  69:          7.7         2.6          6.9         2.3  virginica
+##  70:          6.0         2.2          5.0         1.5  virginica
+##  71:          6.9         3.2          5.7         2.3  virginica
+##  72:          5.6         2.8          4.9         2.0  virginica
+##  73:          7.7         2.8          6.7         2.0  virginica
+##  74:          6.3         2.7          4.9         1.8  virginica
+##  75:          6.7         3.3          5.7         2.1  virginica
+##  76:          7.2         3.2          6.0         1.8  virginica
+##  77:          6.2         2.8          4.8         1.8  virginica
+##  78:          6.1         3.0          4.9         1.8  virginica
+##  79:          6.4         2.8          5.6         2.1  virginica
+##  80:          7.2         3.0          5.8         1.6  virginica
+##  81:          7.4         2.8          6.1         1.9  virginica
+##  82:          7.9         3.8          6.4         2.0  virginica
+##  83:          6.4         2.8          5.6         2.2  virginica
+##  84:          6.3         2.8          5.1         1.5  virginica
+##  85:          6.1         2.6          5.6         1.4  virginica
+##  86:          7.7         3.0          6.1         2.3  virginica
+##  87:          6.3         3.4          5.6         2.4  virginica
+##  88:          6.4         3.1          5.5         1.8  virginica
+##  89:          6.0         3.0          4.8         1.8  virginica
+##  90:          6.9         3.1          5.4         2.1  virginica
+##  91:          6.7         3.1          5.6         2.4  virginica
+##  92:          6.9         3.1          5.1         2.3  virginica
+##  93:          5.8         2.7          5.1         1.9  virginica
+##  94:          6.8         3.2          5.9         2.3  virginica
+##  95:          6.7         3.3          5.7         2.5  virginica
+##  96:          6.7         3.0          5.2         2.3  virginica
+##  97:          6.3         2.5          5.0         1.9  virginica
+##  98:          6.5         3.0          5.2         2.0  virginica
+##  99:          6.2         3.4          5.4         2.3  virginica
+## 100:          5.9         3.0          5.1         1.8  virginica
+##      Sepal.Length Sepal.Width Petal.Length Petal.Width    Species</code></pre>
+<div class="sourceCode" id="cb136"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb136-1" data-line-number="1"><span class="co"># Remove the &quot;Sepal.&quot; prefix</span></a>
+<a class="sourceLine" id="cb136-2" data-line-number="2"><span class="kw">setnames</span> (DT, <span class="kw">gsub</span>(<span class="st">&quot;^Sepal</span><span class="ch">\\</span><span class="st">.&quot;</span>, <span class="st">&quot;&quot;</span>, <span class="kw">names</span> (DT)))</a>
+<a class="sourceLine" id="cb136-3" data-line-number="3">DT</a></code></pre></div>
+<pre><code>##      Length Width Petal.Length Petal.Width   Species
+##   1:    5.1   3.5          1.4         0.2    setosa
+##   2:    4.9   3.0          1.4         0.2    setosa
+##   3:    4.7   3.2          1.3         0.2    setosa
+##   4:    4.6   3.1          1.5         0.2    setosa
+##   5:    5.0   3.6          1.4         0.2    setosa
+##  ---                                                
+## 146:    6.7   3.0          5.2         2.3 virginica
+## 147:    6.3   2.5          5.0         1.9 virginica
+## 148:    6.5   3.0          5.2         2.0 virginica
+## 149:    6.2   3.4          5.4         2.3 virginica
+## 150:    5.9   3.0          5.1         1.8 virginica</code></pre>
+<div class="sourceCode" id="cb138"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb138-1" data-line-number="1"><span class="co"># Remove the two columns starting with &quot;Petal&quot;</span></a>
+<a class="sourceLine" id="cb138-2" data-line-number="2">DT [, <span class="kw">grep</span> (<span class="st">&quot;^Petal&quot;</span>, <span class="kw">names</span> (DT)) <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="ot">NULL</span>]</a>
+<a class="sourceLine" id="cb138-3" data-line-number="3">DT</a></code></pre></div>
+<pre><code>##      Length Width   Species
+##   1:    5.1   3.5    setosa
+##   2:    4.9   3.0    setosa
+##   3:    4.7   3.2    setosa
+##   4:    4.6   3.1    setosa
+##   5:    5.0   3.6    setosa
+##  ---                       
+## 146:    6.7   3.0 virginica
+## 147:    6.3   2.5 virginica
+## 148:    6.5   3.0 virginica
+## 149:    6.2   3.4 virginica
+## 150:    5.9   3.0 virginica</code></pre>
+</div>
+<div id="automatic-indexing" class="section level2">
+<h2>Automatic indexing</h2>
+<p>“if i is a single variable name, it is evaluated in the calling scope, otherwise inside DT’s scope” Only single columns on the left side of operators benefit from automatic indexing.</p>
+<div class="sourceCode" id="cb140"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb140-1" data-line-number="1"><span class="co"># Cleaned up iris data.table</span></a>
+<a class="sourceLine" id="cb140-2" data-line-number="2">DT &lt;-<span class="st"> </span><span class="kw">data.table</span>(iris)</a>
+<a class="sourceLine" id="cb140-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb140-4" data-line-number="4"><span class="co"># Area is greater than 20 square centimeters</span></a>
+<a class="sourceLine" id="cb140-5" data-line-number="5">DT [ Sepal.Width <span class="op">*</span><span class="st"> </span>Sepal.Length <span class="op">&gt;</span><span class="st"> </span><span class="dv">20</span> ]</a></code></pre></div>
+<pre><code>##     Sepal.Length Sepal.Width Petal.Length Petal.Width    Species
+##  1:          5.4         3.9          1.7         0.4     setosa
+##  2:          5.8         4.0          1.2         0.2     setosa
+##  3:          5.7         4.4          1.5         0.4     setosa
+##  4:          5.4         3.9          1.3         0.4     setosa
+##  5:          5.7         3.8          1.7         0.3     setosa
+##  6:          5.2         4.1          1.5         0.1     setosa
+##  7:          5.5         4.2          1.4         0.2     setosa
+##  8:          7.0         3.2          4.7         1.4 versicolor
+##  9:          6.4         3.2          4.5         1.5 versicolor
+## 10:          6.9         3.1          4.9         1.5 versicolor
+## 11:          6.3         3.3          4.7         1.6 versicolor
+## 12:          6.7         3.1          4.4         1.4 versicolor
+## 13:          6.7         3.0          5.0         1.7 versicolor
+## 14:          6.0         3.4          4.5         1.6 versicolor
+## 15:          6.7         3.1          4.7         1.5 versicolor
+## 16:          6.3         3.3          6.0         2.5  virginica
+## 17:          7.1         3.0          5.9         2.1  virginica
+## 18:          7.6         3.0          6.6         2.1  virginica
+## 19:          7.3         2.9          6.3         1.8  virginica
+## 20:          7.2         3.6          6.1         2.5  virginica
+## 21:          6.5         3.2          5.1         2.0  virginica
+## 22:          6.8         3.0          5.5         2.1  virginica
+## 23:          6.4         3.2          5.3         2.3  virginica
+## 24:          7.7         3.8          6.7         2.2  virginica
+## 25:          7.7         2.6          6.9         2.3  virginica
+## 26:          6.9         3.2          5.7         2.3  virginica
+## 27:          7.7         2.8          6.7         2.0  virginica
+## 28:          6.7         3.3          5.7         2.1  virginica
+## 29:          7.2         3.2          6.0         1.8  virginica
+## 30:          7.2         3.0          5.8         1.6  virginica
+## 31:          7.4         2.8          6.1         1.9  virginica
+## 32:          7.9         3.8          6.4         2.0  virginica
+## 33:          7.7         3.0          6.1         2.3  virginica
+## 34:          6.3         3.4          5.6         2.4  virginica
+## 35:          6.9         3.1          5.4         2.1  virginica
+## 36:          6.7         3.1          5.6         2.4  virginica
+## 37:          6.9         3.1          5.1         2.3  virginica
+## 38:          6.8         3.2          5.9         2.3  virginica
+## 39:          6.7         3.3          5.7         2.5  virginica
+## 40:          6.7         3.0          5.2         2.3  virginica
+## 41:          6.2         3.4          5.4         2.3  virginica
+##     Sepal.Length Sepal.Width Petal.Length Petal.Width    Species</code></pre>
+<div class="sourceCode" id="cb142"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb142-1" data-line-number="1"><span class="co"># Add new boolean column</span></a>
+<a class="sourceLine" id="cb142-2" data-line-number="2">DT [, is_large <span class="op">:</span><span class="er">=</span><span class="st"> </span>Sepal.Width <span class="op">*</span><span class="st"> </span>Sepal.Length <span class="op">&gt;</span><span class="st"> </span><span class="dv">25</span>]</a>
+<a class="sourceLine" id="cb142-3" data-line-number="3">DT</a></code></pre></div>
+<pre><code>##      Sepal.Length Sepal.Width Petal.Length Petal.Width   Species is_large
+##   1:          5.1         3.5          1.4         0.2    setosa    FALSE
+##   2:          4.9         3.0          1.4         0.2    setosa    FALSE
+##   3:          4.7         3.2          1.3         0.2    setosa    FALSE
+##   4:          4.6         3.1          1.5         0.2    setosa    FALSE
+##   5:          5.0         3.6          1.4         0.2    setosa    FALSE
+##  ---                                                                     
+## 146:          6.7         3.0          5.2         2.3 virginica    FALSE
+## 147:          6.3         2.5          5.0         1.9 virginica    FALSE
+## 148:          6.5         3.0          5.2         2.0 virginica    FALSE
+## 149:          6.2         3.4          5.4         2.3 virginica    FALSE
+## 150:          5.9         3.0          5.1         1.8 virginica    FALSE</code></pre>
+<div class="sourceCode" id="cb144"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb144-1" data-line-number="1"><span class="co"># Now large observations with is_large</span></a>
+<a class="sourceLine" id="cb144-2" data-line-number="2">DT [is_large <span class="op">==</span><span class="st"> </span><span class="ot">TRUE</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width   Species is_large
+## 1:          5.7         4.4          1.5         0.4    setosa     TRUE
+## 2:          7.2         3.6          6.1         2.5 virginica     TRUE
+## 3:          7.7         3.8          6.7         2.2 virginica     TRUE
+## 4:          7.9         3.8          6.4         2.0 virginica     TRUE</code></pre>
+<div class="sourceCode" id="cb146"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb146-1" data-line-number="1">DT [(is_large)] <span class="co"># Also OK</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width   Species is_large
+## 1:          5.7         4.4          1.5         0.4    setosa     TRUE
+## 2:          7.2         3.6          6.1         2.5 virginica     TRUE
+## 3:          7.7         3.8          6.7         2.2 virginica     TRUE
+## 4:          7.9         3.8          6.4         2.0 virginica     TRUE</code></pre>
+</div>
+<div id="creating-and-using-a-key" class="section level2">
+<h2>Creating and using a key</h2>
+<p>When a key is being set, the data.table sorts the data by the column we specify and change the table by reference. Having set a key will allow you to use it, for example, as a super-charged row name when doing selections.</p>
+<div class="sourceCode" id="cb148"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb148-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (iris [<span class="kw">c</span>(<span class="dv">101</span><span class="op">:</span><span class="dv">103</span>, <span class="dv">51</span><span class="op">:</span><span class="dv">53</span>, <span class="dv">1</span><span class="op">:</span><span class="dv">3</span>),])</a>
+<a class="sourceLine" id="cb148-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width    Species
+## 1:          6.3         3.3          6.0         2.5  virginica
+## 2:          5.8         2.7          5.1         1.9  virginica
+## 3:          7.1         3.0          5.9         2.1  virginica
+## 4:          7.0         3.2          4.7         1.4 versicolor
+## 5:          6.4         3.2          4.5         1.5 versicolor
+## 6:          6.9         3.1          4.9         1.5 versicolor
+## 7:          5.1         3.5          1.4         0.2     setosa
+## 8:          4.9         3.0          1.4         0.2     setosa
+## 9:          4.7         3.2          1.3         0.2     setosa</code></pre>
+<div class="sourceCode" id="cb150"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb150-1" data-line-number="1"><span class="kw">setkey</span> (DT, Species)</a>
+<a class="sourceLine" id="cb150-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width    Species
+## 1:          5.1         3.5          1.4         0.2     setosa
+## 2:          4.9         3.0          1.4         0.2     setosa
+## 3:          4.7         3.2          1.3         0.2     setosa
+## 4:          7.0         3.2          4.7         1.4 versicolor
+## 5:          6.4         3.2          4.5         1.5 versicolor
+## 6:          6.9         3.1          4.9         1.5 versicolor
+## 7:          6.3         3.3          6.0         2.5  virginica
+## 8:          5.8         2.7          5.1         1.9  virginica
+## 9:          7.1         3.0          5.9         2.1  virginica</code></pre>
+<div class="sourceCode" id="cb152"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb152-1" data-line-number="1"><span class="co"># indexing</span></a>
+<a class="sourceLine" id="cb152-2" data-line-number="2">DT [<span class="st">&quot;setosa&quot;</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          5.1         3.5          1.4         0.2  setosa
+## 2:          4.9         3.0          1.4         0.2  setosa
+## 3:          4.7         3.2          1.3         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb154"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb154-1" data-line-number="1"><span class="co"># Arguments like mult and nomatch then help you to select only particular parts of groups. </span></a>
+<a class="sourceLine" id="cb154-2" data-line-number="2">DT [<span class="st">&quot;setosa&quot;</span>, mult =<span class="st"> &quot;first&quot;</span>] <span class="co"># the first row of selection</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          5.1         3.5          1.4         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb156"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb156-1" data-line-number="1">DT [<span class="st">&quot;setosa&quot;</span>, mult =<span class="st"> &quot;last&quot;</span>] <span class="co"># the last row of selection</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.7         3.2          1.3         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb158"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb158-1" data-line-number="1"><span class="co"># Indexing with no match item</span></a>
+<a class="sourceLine" id="cb158-2" data-line-number="2">DT [<span class="kw">c</span> (<span class="st">&quot;setosa&quot;</span>, <span class="st">&quot;gropa&quot;</span>)] <span class="co"># default is nomatch = NA</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          5.1         3.5          1.4         0.2  setosa
+## 2:          4.9         3.0          1.4         0.2  setosa
+## 3:          4.7         3.2          1.3         0.2  setosa
+## 4:           NA          NA           NA          NA   gropa</code></pre>
+<div class="sourceCode" id="cb160"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb160-1" data-line-number="1">DT [<span class="kw">c</span> (<span class="st">&quot;setosa&quot;</span>, <span class="st">&quot;gropa&quot;</span>), nomatch =<span class="st"> </span><span class="dv">0</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          5.1         3.5          1.4         0.2  setosa
+## 2:          4.9         3.0          1.4         0.2  setosa
+## 3:          4.7         3.2          1.3         0.2  setosa</code></pre>
+</div>
+<div id="two-column-key" class="section level2">
+<h2>Two-column key</h2>
+<p>The second key is sorted within each group of the first key</p>
+<div class="sourceCode" id="cb162"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb162-1" data-line-number="1"><span class="kw">setkey</span> (DT, Species, Sepal.Length)</a>
+<a class="sourceLine" id="cb162-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width    Species
+## 1:          4.7         3.2          1.3         0.2     setosa
+## 2:          4.9         3.0          1.4         0.2     setosa
+## 3:          5.1         3.5          1.4         0.2     setosa
+## 4:          6.4         3.2          4.5         1.5 versicolor
+## 5:          6.9         3.1          4.9         1.5 versicolor
+## 6:          7.0         3.2          4.7         1.4 versicolor
+## 7:          5.8         2.7          5.1         1.9  virginica
+## 8:          6.3         3.3          6.0         2.5  virginica
+## 9:          7.1         3.0          5.9         2.1  virginica</code></pre>
+<div class="sourceCode" id="cb164"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb164-1" data-line-number="1"><span class="co"># indexing both keys</span></a>
+<a class="sourceLine" id="cb164-2" data-line-number="2">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">4.7</span>)]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.7         3.2          1.3         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb166"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb166-1" data-line-number="1"><span class="co"># indexing with no match item</span></a>
+<a class="sourceLine" id="cb166-2" data-line-number="2">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">5.2</span>)]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          5.2          NA           NA          NA  setosa</code></pre>
+<div class="sourceCode" id="cb168"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb168-1" data-line-number="1"><span class="co"># indexing with only the first key</span></a>
+<a class="sourceLine" id="cb168-2" data-line-number="2">DT [.(<span class="st">&quot;setosa&quot;</span>)]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.7         3.2          1.3         0.2  setosa
+## 2:          4.9         3.0          1.4         0.2  setosa
+## 3:          5.1         3.5          1.4         0.2  setosa</code></pre>
+</div>
+<div id="see-the-difference-of-indexing-with-and-without-a-key" class="section level2">
+<h2>See the difference of indexing with and without a key</h2>
+<div class="sourceCode" id="cb170"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb170-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (iris [<span class="kw">c</span> (<span class="dv">101</span><span class="op">:</span><span class="dv">103</span>, <span class="dv">51</span><span class="op">:</span><span class="dv">53</span>, <span class="dv">1</span><span class="op">:</span><span class="dv">3</span>),])</a>
+<a class="sourceLine" id="cb170-2" data-line-number="2">DT</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width    Species
+## 1:          6.3         3.3          6.0         2.5  virginica
+## 2:          5.8         2.7          5.1         1.9  virginica
+## 3:          7.1         3.0          5.9         2.1  virginica
+## 4:          7.0         3.2          4.7         1.4 versicolor
+## 5:          6.4         3.2          4.5         1.5 versicolor
+## 6:          6.9         3.1          4.9         1.5 versicolor
+## 7:          5.1         3.5          1.4         0.2     setosa
+## 8:          4.9         3.0          1.4         0.2     setosa
+## 9:          4.7         3.2          1.3         0.2     setosa</code></pre>
+<div class="sourceCode" id="cb172"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb172-1" data-line-number="1">DT [Species <span class="op">==</span><span class="st"> &quot;setosa&quot;</span>] <span class="co"># without key</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          5.1         3.5          1.4         0.2  setosa
+## 2:          4.9         3.0          1.4         0.2  setosa
+## 3:          4.7         3.2          1.3         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb174"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb174-1" data-line-number="1"><span class="kw">setkey</span> (DT, Species)</a>
+<a class="sourceLine" id="cb174-2" data-line-number="2">DT [<span class="st">&quot;setosa&quot;</span>] <span class="co"># with key</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          5.1         3.5          1.4         0.2  setosa
+## 2:          4.9         3.0          1.4         0.2  setosa
+## 3:          4.7         3.2          1.3         0.2  setosa</code></pre>
+</div>
+<div id="selecting-groups-or-parts-of-groups" class="section level2">
+<h2>Selecting groups or parts of groups</h2>
+<div class="sourceCode" id="cb176"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb176-1" data-line-number="1"><span class="co"># The 'keyed' data.table DT</span></a>
+<a class="sourceLine" id="cb176-2" data-line-number="2">DT &lt;-<span class="st"> </span><span class="kw">data.table</span>(<span class="dt">A =</span> letters[<span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>)], </a>
+<a class="sourceLine" id="cb176-3" data-line-number="3">                 <span class="dt">B =</span> <span class="kw">c</span>(<span class="dv">5</span>, <span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">9</span>, <span class="dv">8</span>, <span class="dv">8</span>, <span class="dv">6</span>), </a>
+<a class="sourceLine" id="cb176-4" data-line-number="4">                 <span class="dt">C =</span> <span class="dv">6</span><span class="op">:</span><span class="dv">12</span>)</a>
+<a class="sourceLine" id="cb176-5" data-line-number="5"><span class="kw">setkey</span>(DT, A, B)</a>
+<a class="sourceLine" id="cb176-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb176-7" data-line-number="7"><span class="co"># Select the &quot;b&quot; group</span></a>
+<a class="sourceLine" id="cb176-8" data-line-number="8">DT [<span class="st">&quot;b&quot;</span>]</a></code></pre></div>
+<pre><code>##    A B  C
+## 1: b 1  8
+## 2: b 5  6
+## 3: b 8 11</code></pre>
+<div class="sourceCode" id="cb178"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb178-1" data-line-number="1"><span class="co"># &quot;b&quot; and &quot;c&quot; groups</span></a>
+<a class="sourceLine" id="cb178-2" data-line-number="2">DT [<span class="kw">c</span> (<span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>)]</a></code></pre></div>
+<pre><code>##    A B  C
+## 1: b 1  8
+## 2: b 5  6
+## 3: b 8 11
+## 4: c 6 12
+## 5: c 9  9</code></pre>
+<div class="sourceCode" id="cb180"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb180-1" data-line-number="1"><span class="co"># The first row of the &quot;b&quot; and &quot;c&quot; groups</span></a>
+<a class="sourceLine" id="cb180-2" data-line-number="2">DT [<span class="kw">c</span> (<span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>), mult =<span class="st"> &quot;first&quot;</span>]</a></code></pre></div>
+<pre><code>##    A B  C
+## 1: b 1  8
+## 2: c 6 12</code></pre>
+<div class="sourceCode" id="cb182"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb182-1" data-line-number="1"><span class="co"># First and last row of the &quot;b&quot; and &quot;c&quot; groups</span></a>
+<a class="sourceLine" id="cb182-2" data-line-number="2">DT [<span class="kw">c</span> (<span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>), .SD[<span class="kw">c</span>(<span class="dv">1</span>, .N)], by =<span class="st"> </span>.EACHI]</a></code></pre></div>
+<pre><code>##    A B  C
+## 1: b 1  8
+## 2: b 8 11
+## 3: c 6 12
+## 4: c 9  9</code></pre>
+<div class="sourceCode" id="cb184"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb184-1" data-line-number="1"><span class="co"># Copy and extend code for instruction 4: add printout</span></a>
+<a class="sourceLine" id="cb184-2" data-line-number="2">DT [<span class="kw">c</span>(<span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>), { <span class="kw">print</span>(.SD); .SD[<span class="kw">c</span>(<span class="dv">1</span>, .N)] }, by =<span class="st"> </span>.EACHI]</a></code></pre></div>
+<pre><code>##    B  C
+## 1: 1  8
+## 2: 5  6
+## 3: 8 11
+##    B  C
+## 1: 6 12
+## 2: 9  9</code></pre>
+<pre><code>##    A B  C
+## 1: b 1  8
+## 2: b 8 11
+## 3: c 6 12
+## 4: c 9  9</code></pre>
+</div>
+<div id="rolling-joins" class="section level2">
+<h2>Rolling joins</h2>
+<div class="sourceCode" id="cb187"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb187-1" data-line-number="1">DT &lt;-<span class="st"> </span><span class="kw">data.table</span> (iris [<span class="kw">c</span> (<span class="dv">48</span><span class="op">:</span><span class="dv">53</span>, <span class="dv">101</span><span class="op">:</span><span class="dv">103</span>), ])</a>
+<a class="sourceLine" id="cb187-2" data-line-number="2"><span class="kw">setkey</span> (DT, Species, Sepal.Length)</a>
+<a class="sourceLine" id="cb187-3" data-line-number="3">DT</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width    Species
+## 1:          4.6         3.2          1.4         0.2     setosa
+## 2:          5.0         3.3          1.4         0.2     setosa
+## 3:          5.3         3.7          1.5         0.2     setosa
+## 4:          6.4         3.2          4.5         1.5 versicolor
+## 5:          6.9         3.1          4.9         1.5 versicolor
+## 6:          7.0         3.2          4.7         1.4 versicolor
+## 7:          5.8         2.7          5.1         1.9  virginica
+## 8:          6.3         3.3          6.0         2.5  virginica
+## 9:          7.1         3.0          5.9         2.1  virginica</code></pre>
+<div class="sourceCode" id="cb189"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb189-1" data-line-number="1">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">4.9</span>)] <span class="co"># there is no match of 4.9 in the second key = a gap</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.9          NA           NA          NA  setosa</code></pre>
+<div class="sourceCode" id="cb191"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb191-1" data-line-number="1">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">4.9</span>), roll =<span class="st"> </span><span class="ot">TRUE</span>] <span class="co"># allow to roll the prevailing observation before the gap forward = show other columns across the gap</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.9         3.2          1.4         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb193"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb193-1" data-line-number="1">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">4.9</span>), roll =<span class="st"> &quot;nearest&quot;</span>] <span class="co"># the nearest value that match the second key</span></a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.9         3.3          1.4         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb195"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb195-1" data-line-number="1"><span class="co"># Always roll forwards or backwards</span></a>
+<a class="sourceLine" id="cb195-2" data-line-number="2">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">4.9</span>), roll =<span class="st"> </span><span class="op">+</span><span class="ot">Inf</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.9         3.2          1.4         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb197"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb197-1" data-line-number="1">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">4.9</span>), roll =<span class="st"> </span><span class="op">-</span><span class="ot">Inf</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.9         3.3          1.4         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb199"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb199-1" data-line-number="1"><span class="co"># Limit the staleness of data</span></a>
+<a class="sourceLine" id="cb199-2" data-line-number="2">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">4.9</span>), roll =<span class="st"> </span><span class="op">+</span><span class="dv">2</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.9         3.2          1.4         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb201"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb201-1" data-line-number="1">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="fl">4.9</span>), roll =<span class="st"> </span><span class="dv">-2</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:          4.9         3.3          1.4         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb203"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb203-1" data-line-number="1"><span class="co"># Concrol ends</span></a>
+<a class="sourceLine" id="cb203-2" data-line-number="2">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="dv">6</span><span class="op">:</span><span class="dv">7</span>), roll =<span class="st"> </span><span class="ot">TRUE</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:            6         3.7          1.5         0.2  setosa
+## 2:            7         3.7          1.5         0.2  setosa</code></pre>
+<div class="sourceCode" id="cb205"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb205-1" data-line-number="1">DT [.(<span class="st">&quot;setosa&quot;</span>, <span class="dv">6</span><span class="op">:</span><span class="dv">7</span>), roll =<span class="st"> </span><span class="ot">TRUE</span>, rollends =<span class="st"> </span><span class="ot">FALSE</span>]</a></code></pre></div>
+<pre><code>##    Sepal.Length Sepal.Width Petal.Length Petal.Width Species
+## 1:            6          NA           NA          NA  setosa
+## 2:            7          NA           NA          NA  setosa</code></pre>
+</div>
+<div id="practice" class="section level2">
+<h2>Practice</h2>
+<div class="sourceCode" id="cb207"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb207-1" data-line-number="1"><span class="co"># Keyed data.table DT</span></a>
+<a class="sourceLine" id="cb207-2" data-line-number="2">DT &lt;-<span class="st"> </span><span class="kw">data.table</span>(<span class="dt">A =</span> letters[<span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>)], </a>
+<a class="sourceLine" id="cb207-3" data-line-number="3">                 <span class="dt">B =</span> <span class="kw">c</span>(<span class="dv">5</span>, <span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">9</span>, <span class="dv">8</span>, <span class="dv">8</span>, <span class="dv">6</span>), </a>
+<a class="sourceLine" id="cb207-4" data-line-number="4">                 <span class="dt">C =</span> <span class="dv">6</span><span class="op">:</span><span class="dv">12</span>, </a>
+<a class="sourceLine" id="cb207-5" data-line-number="5">                 <span class="dt">key =</span> <span class="st">&quot;A,B&quot;</span>)</a>
+<a class="sourceLine" id="cb207-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb207-7" data-line-number="7"><span class="co"># Get the key of DT</span></a>
+<a class="sourceLine" id="cb207-8" data-line-number="8"><span class="kw">key</span> (DT)</a></code></pre></div>
+<pre><code>## [1] &quot;A&quot; &quot;B&quot;</code></pre>
+<div class="sourceCode" id="cb209"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb209-1" data-line-number="1"><span class="co"># Row where A == &quot;b&quot; and B == 6</span></a>
+<a class="sourceLine" id="cb209-2" data-line-number="2">DT[.(<span class="st">&quot;b&quot;</span>,<span class="dv">6</span>)]</a></code></pre></div>
+<pre><code>##    A B  C
+## 1: b 6 NA</code></pre>
+<div class="sourceCode" id="cb211"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb211-1" data-line-number="1"><span class="co"># Return the prevailing row</span></a>
+<a class="sourceLine" id="cb211-2" data-line-number="2">DT[.(<span class="st">&quot;b&quot;</span>,<span class="dv">6</span>), roll =<span class="st"> </span><span class="ot">TRUE</span>]</a></code></pre></div>
+<pre><code>##    A B C
+## 1: b 6 6</code></pre>
+<div class="sourceCode" id="cb213"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb213-1" data-line-number="1"><span class="co"># Return the nearest row</span></a>
+<a class="sourceLine" id="cb213-2" data-line-number="2">DT[.(<span class="st">&quot;b&quot;</span>,<span class="dv">6</span>), roll =<span class="st"> &quot;nearest&quot;</span>]</a></code></pre></div>
+<pre><code>##    A B C
+## 1: b 6 6</code></pre>
+<p>The rollends argument is actually a vector of two logical values, but remember that you can always look this up via ?data.table. You were introduced to this argument via the control ends section. If you want to roll for a certain distance, you should continue to use the roll argument.</p>
+<div class="sourceCode" id="cb215"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb215-1" data-line-number="1"><span class="co"># Keyed data.table DT</span></a>
+<a class="sourceLine" id="cb215-2" data-line-number="2">DT &lt;-<span class="st"> </span><span class="kw">data.table</span>(<span class="dt">A =</span> letters[<span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>)], </a>
+<a class="sourceLine" id="cb215-3" data-line-number="3">                 <span class="dt">B =</span> <span class="kw">c</span>(<span class="dv">5</span>, <span class="dv">4</span>, <span class="dv">1</span>, <span class="dv">9</span>, <span class="dv">8</span>, <span class="dv">8</span>, <span class="dv">6</span>), </a>
+<a class="sourceLine" id="cb215-4" data-line-number="4">                 <span class="dt">C =</span> <span class="dv">6</span><span class="op">:</span><span class="dv">12</span>, </a>
+<a class="sourceLine" id="cb215-5" data-line-number="5">                 <span class="dt">key =</span> <span class="st">&quot;A,B&quot;</span>)</a>
+<a class="sourceLine" id="cb215-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb215-7" data-line-number="7"><span class="co"># Print the sequence (-2):10 for the &quot;b&quot; group</span></a>
+<a class="sourceLine" id="cb215-8" data-line-number="8">DT[.(<span class="st">&quot;b&quot;</span>, (<span class="op">-</span><span class="dv">2</span>)<span class="op">:</span><span class="dv">10</span>)]</a></code></pre></div>
+<pre><code>##     A  B  C
+##  1: b -2 NA
+##  2: b -1 NA
+##  3: b  0 NA
+##  4: b  1  8
+##  5: b  2 NA
+##  6: b  3 NA
+##  7: b  4 NA
+##  8: b  5  6
+##  9: b  6 NA
+## 10: b  7 NA
+## 11: b  8 11
+## 12: b  9 NA
+## 13: b 10 NA</code></pre>
+<div class="sourceCode" id="cb217"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb217-1" data-line-number="1"><span class="co"># Add code: carry the prevailing values forwards</span></a>
+<a class="sourceLine" id="cb217-2" data-line-number="2">DT[.(<span class="st">&quot;b&quot;</span>, (<span class="op">-</span><span class="dv">2</span>)<span class="op">:</span><span class="dv">10</span>), roll =<span class="st"> </span><span class="ot">TRUE</span>]</a></code></pre></div>
+<pre><code>##     A  B  C
+##  1: b -2 NA
+##  2: b -1 NA
+##  3: b  0 NA
+##  4: b  1  8
+##  5: b  2  8
+##  6: b  3  8
+##  7: b  4  8
+##  8: b  5  6
+##  9: b  6  6
+## 10: b  7  6
+## 11: b  8 11
+## 12: b  9 11
+## 13: b 10 11</code></pre>
+<div class="sourceCode" id="cb219"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb219-1" data-line-number="1"><span class="co"># Add code: carry the first observation backwards</span></a>
+<a class="sourceLine" id="cb219-2" data-line-number="2">DT[.(<span class="st">&quot;b&quot;</span>, (<span class="op">-</span><span class="dv">2</span>)<span class="op">:</span><span class="dv">10</span>), roll =<span class="st"> </span><span class="ot">TRUE</span>, rollends =<span class="st"> </span><span class="ot">TRUE</span>]</a></code></pre></div>
+<pre><code>##     A  B  C
+##  1: b -2  8
+##  2: b -1  8
+##  3: b  0  8
+##  4: b  1  8
+##  5: b  2  8
+##  6: b  3  8
+##  7: b  4  8
+##  8: b  5  6
+##  9: b  6  6
+## 10: b  7  6
+## 11: b  8 11
+## 12: b  9 11
+## 13: b 10 11</code></pre>
+<div class="sourceCode" id="cb221"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb221-1" data-line-number="1">DT[.(<span class="st">&quot;b&quot;</span>, (<span class="op">-</span><span class="dv">2</span>)<span class="op">:</span><span class="dv">10</span>), roll =<span class="st"> </span><span class="ot">TRUE</span>, rollends =<span class="st"> </span><span class="kw">c</span>(<span class="ot">TRUE</span>, <span class="ot">TRUE</span>)] <span class="co"># also OK</span></a></code></pre></div>
+<pre><code>##     A  B  C
+##  1: b -2  8
+##  2: b -1  8
+##  3: b  0  8
+##  4: b  1  8
+##  5: b  2  8
+##  6: b  3  8
+##  7: b  4  8
+##  8: b  5  6
+##  9: b  6  6
+## 10: b  7  6
+## 11: b  8 11
+## 12: b  9 11
+## 13: b 10 11</code></pre>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
