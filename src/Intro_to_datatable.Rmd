@@ -1,0 +1,460 @@
+---
+title: "data.table how does it work"
+output: rmarkdown::html_vignette
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library (data.table)
+```
+
+## General form
+The general form of a ``data.table`` query is ``[i, j, by]``. The 3 parts of the query can be mapped to SQL as _i_ = where, _j_ = select, and _by_ = group by. 
+```{r}
+mtcarsDT <- data.table (mtcars)
+mtcarsDT
+mtcarsDT [mpg > 20,
+          .(AvgHP = mean(hp),
+            "minWT(kg)" = min (wt + 453.6)), # wt in lbs
+          by = .(cyl, under5gears = gear < 5)]
+```
+
+> Take DT, subset rows using _i_, then calculate _j_ grouped by _by_    
+  
+In creation of a ``data.table``, use ``L`` after a numeric to specify that it is an integer (NOT _numeric_). Give columns with different lengths, and R will "recycle" the shorter column to match the length of the longer one by re-using the first items
+```{r}
+## Create a data.table
+## Column a will be of integer type
+DT <- data.table(a = c(1L, 2L), b = LETTERS[1:4])
+
+## Create another data.table
+## Columns B and C will be cycling
+DT <- data.table (A = 1:6, B = c("a", "b", "c"), C = rnorm (6), D = TRUE)
+```
+
+## Selecting rows by number in _i_
+```{r}
+DT [3:5,]
+DT [3:5] # same thing, unlike data.frame
+```
+
+## Compatibility
+``data.table`` is a ``data.frame`` too. It is accepted by all base R packages. 
+```{r}
+class (DT)
+```
+
+When a ``data.table`` is called by a function, it looks to see where it is called from. When it is called by a package which does not recognize ``data.table``, it will switch ``data.frame``, and it will still work.    
+  
+The ``.N`` in ``data.table`` means number of rows
+```{r}
+DT [.N]
+DT [nrow(DT)] # same thing
+
+# Select the second to last row
+DT [.N-1]
+
+# Names and dimensions
+names (DT)
+dim (DT)
+
+# Selective subsetting
+DT [c (2, 2, 3)]
+```
+
+## Sececting columns in _j_
+```{r}
+DT [, .(B, C)] # .() is an alias to list() in data.tables and they mean the same
+DT [c(1, 3), .(B, C)] # a vector is required for i
+
+# Object or Column names?
+B <- 3
+DT [, .(B)]
+DT [, B]
+```
+
+## Computing on columns
+Call functions on the columns as if the columns were variables. We can provide new column names while computing. If we don't, column names will be assigned automatically.  
+```{r}
+DT [, .(Total = sum(A), Mean = mean(C))]
+
+# No column names
+DT [, .(sum(A), mean(C))]
+```
+
+## Recying in _j_
+```{r}
+# The value of C will be recycled to fit the length of B
+DT [, .(B, C = sum (C))]
+```
+
+## Throw anything into J
+without even giving a value
+```{r}
+# A plot and a Null value will be returned
+DT [, plot (A, C)]
+```
+
+Throw multiple actions in curly brackets
+```{r}
+DT [, {print(A)
+  hist(C)
+  NULL}] # set NULL to plot C instead of counting C values
+```
+
+## Doing _j_ by group
+```{r}
+# the groups are returned in order as they appear in the original DT
+DT [, .(mySum = sum(A),
+        myMean = mean(A)),
+    by = .(B)]
+```
+
+## Function calls in _by_ 
+```{r}
+DT [, .(mySum = sum(C)), by = .(Grp = A%%2)]
+
+# if you just have one items each, you can do this:
+DT [, sum(C), by = A%%2]
+```
+
+## Grouping only on the subset
+```{r}
+# Note that the even numbers return first because of the selection
+DT [2:4, sum(C), by = A%%2]
+```
+
+## Practice using iris
+```{r}
+DT <- data.table (iris)
+head (DT)
+DT [, mean (Sepal.Length), by = Species]
+DT [, mean (Sepal.Length), by = .(substr (Species, 1, 1))]
+
+# .N in j
+DT [, .(Count = .N), by = .(Area = round (Sepal.Length* Sepal.Width /10))]
+```
+
+## Grouping by multiple columns
+```{r}
+DT [, .(C = cumsum (Sepal.Length)), .(Petal.Width, Species)]
+
+DT [, .(C = tail (Sepal.Length, 2)), by = .(Species)]
+```
+
+## Chaining operations together
+```{r}
+# in multiple statements
+DT <- data.table (A = c("c", "b", "a"), B = 1:6)
+DT
+ans <- DT [, sum (B), by = A]
+ans
+ans [order (A)]
+
+# in one sigle single statement
+DT [, sum (B), by = A] [order (A)]
+```
+
+## Chaining the previous iris example
+```{r}
+DT <- data.table (iris)
+DT [, .(C = cumsum (Sepal.Length)), .(Petal.Width, Species)][, .(C = tail (C, 2)), by = .(Species)]
+DT [, .(Sepal.Length = median (Sepal.Length), 
+       Sepal.Width = median (Sepal.Width), 
+       Petal.Length = median (Petal.Length),
+       Petal.Width = median (Petal.Width)), 
+    by = Species] [order (Species, decreasing = TRUE)]
+```
+
+## Subset of data: .SD 
+When you have too many columns and you want to perform particular operation on a subset of columns
+```{r}
+# .SD represents all columns except those specified in by
+DT [, lapply (.SD, median), by = Species]
+
+# .SDcols specifies columns used in .SD
+DT [, lapply(.SD, sum), .SDcols =2:4]
+
+# select all but first row of the groups
+DT <- data.table (A = c("c", "c", "b", "a"), B = 1:6, C = TRUE, D = 5L)
+DT
+DT [, .SD[-1], .SDcols = 2:4, by = A]
+
+# sum all cols and number of rows
+DT <- data.table (x = c(2,1,2,1,2,2,1),
+                  y = c(1,3,5,7,9,11,13),
+                  z = c(2,4,6,8,10,12,14))
+DT [, c (lapply (.SD, sum), .N), by = x, .SDcols = c ("x", "y", "z")]
+
+# cumsum while grouping
+DT [, lapply (.SD, cumsum), .SDcols = 1:2, by = .(by1 = x, by2 = z > 8)]
+```
+
+## Add/update columns in _j_ using :=
+```{r}
+DT
+# Add
+DT [, c("x", "p") := .(rev(x), 1:7)]
+DT
+DT [, x := rev(x)] # short expression
+DT
+
+# Remove
+DT [, c("y", "z") := NULL]
+DT [, z := NULL] # short expression
+DT
+
+# use objects
+myCol <- c ("x", "p")
+DT [, (myCol) := .(rev(x), 1:7)] # wrap in (), or it's recognized as column names
+DT
+
+# assign multiple columns
+DT [, ":=" (y = x*2,
+            q = p+1)]
+DT
+```
+
+## := cimbined with _i_ and _by_
+```{r}
+DT <- data.table (x = c (2, 2, 1, 1, 1), y = 6:10)
+DT [2:4, z := sum (y), by = x]
+DT
+```
+
+## Add/update multiple columns
+```{r}
+DT <- data.table (A = c(1, 1, 1, 2, 2), B = 1:5)
+DT [,":="(B = B + 1, C = A + B, D = 2)]
+DT
+```
+
+## Delete by col number
+```{r}
+DT [, 2 := NULL]
+DT
+```
+
+## set()
+repeated update data by reference
+```{r}
+DT <- data.table (x = 1:5, y = c (1, 8, 1, 1, 1), z = c (2, 5, 4, 2, 3))
+# update the 1:5 rows of the 3rd column into new values
+for (i in 1:5) DT [i, z := i + 1]
+for (i in 1:5) set (DT, i, 3L, i + 1) # a better way
+DT
+
+# set random 3 rows to NA
+for (i in 2:3) set(DT, sample(1:5, 3), i, NA)
+DT
+```
+
+## setnames()
+```{r}
+setnames (DT, "z", "p")
+DT
+setnames (DT, names (DT), toupper (names(DT)))
+DT
+```
+
+## setcolorder()
+```{r}
+setcolorder (DT, c("P", "X", "Y"))
+DT
+```
+
+## The ``set`` family
+```{r}
+setnames (DT, names (DT), paste0 (names (DT), "_2"))
+DT
+setcolorder (DT, rev (names (DT)))
+DT
+```
+
+## Using column names in i
+```{r}
+DT <- data.table (A = c("c", "b", "a"), B = 1:6)
+DT
+DT [A == "a"]
+DT [A %in% c ("a", "c")]
+
+# Indexing
+w <- DT [, A == "a"] # return a vector if not wrapped in .()
+w
+DT [w]
+```
+
+## Indexing using iris
+```{r}
+DT <- data.table(iris)
+
+# Species is "virginica"
+DT [Species == "virginica"]
+
+# Species is either "virginica" or "versicolor"
+DT [Species %in% c("virginica", "versicolor")]
+
+# Remove the "Sepal." prefix
+setnames (DT, gsub("^Sepal\\.", "", names (DT)))
+DT
+
+# Remove the two columns starting with "Petal"
+DT [, grep ("^Petal", names (DT)) := NULL]
+DT
+```
+
+## Automatic indexing  
+"if i is a single variable name, it is evaluated in the calling scope, otherwise inside DT's scope" Only single columns on the left side of operators benefit from automatic indexing.  
+```{r}
+# Cleaned up iris data.table
+DT <- data.table(iris)
+
+# Area is greater than 20 square centimeters
+DT [ Sepal.Width * Sepal.Length > 20 ]
+
+# Add new boolean column
+DT [, is_large := Sepal.Width * Sepal.Length > 25]
+DT
+
+# Now large observations with is_large
+DT [is_large == TRUE]
+DT [(is_large)] # Also OK
+```
+
+## Creating and using a key
+When a key is being set, the data.table sorts the data by the column we specify and change the table by reference. Having set a key will allow you to use it, for example, as a super-charged row name when doing selections.   
+```{r}
+DT <- data.table (iris [c(101:103, 51:53, 1:3),])
+DT
+setkey (DT, Species)
+DT
+
+# indexing
+DT ["setosa"]
+
+# Arguments like mult and nomatch then help you to select only particular parts of groups. 
+DT ["setosa", mult = "first"] # the first row of selection
+DT ["setosa", mult = "last"] # the last row of selection
+
+# Indexing with no match item
+DT [c ("setosa", "gropa")] # default is nomatch = NA
+DT [c ("setosa", "gropa"), nomatch = 0]
+```
+
+## Two-column key
+The second key is sorted within each group of the first key
+```{r}
+setkey (DT, Species, Sepal.Length)
+DT
+
+# indexing both keys
+DT [.("setosa", 4.7)]
+
+# indexing with no match item
+DT [.("setosa", 5.2)]
+
+# indexing with only the first key
+DT [.("setosa")]
+```
+
+## See the difference of indexing with and without a key
+```{r}
+DT <- data.table (iris [c (101:103, 51:53, 1:3),])
+DT
+DT [Species == "setosa"] # without key
+setkey (DT, Species)
+DT ["setosa"] # with key
+```
+
+## Selecting groups or parts of groups
+```{r}
+# The 'keyed' data.table DT
+DT <- data.table(A = letters[c(2, 1, 2, 3, 1, 2, 3)], 
+                 B = c(5, 4, 1, 9, 8, 8, 6), 
+                 C = 6:12)
+setkey(DT, A, B)
+
+# Select the "b" group
+DT ["b"]
+
+# "b" and "c" groups
+DT [c ("b", "c")]
+
+# The first row of the "b" and "c" groups
+DT [c ("b", "c"), mult = "first"]
+
+# First and last row of the "b" and "c" groups
+DT [c ("b", "c"), .SD[c(1, .N)], by = .EACHI]
+
+# Copy and extend code for instruction 4: add printout
+DT [c("b", "c"), { print(.SD); .SD[c(1, .N)] }, by = .EACHI]
+```
+
+## Rolling joins
+```{r}
+DT <- data.table (iris [c (48:53, 101:103), ])
+setkey (DT, Species, Sepal.Length)
+DT
+
+DT [.("setosa", 4.9)] # there is no match of 4.9 in the second key = a gap
+DT [.("setosa", 4.9), roll = TRUE] # allow to roll the prevailing observation before the gap forward = show other columns across the gap
+
+DT [.("setosa", 4.9), roll = "nearest"] # the nearest value that match the second key
+
+# Always roll forwards or backwards
+DT [.("setosa", 4.9), roll = +Inf]
+DT [.("setosa", 4.9), roll = -Inf]
+
+# Limit the staleness of data
+DT [.("setosa", 4.9), roll = +2]
+DT [.("setosa", 4.9), roll = -2]
+
+# Concrol ends
+DT [.("setosa", 6:7), roll = TRUE]
+DT [.("setosa", 6:7), roll = TRUE, rollends = FALSE]
+```
+
+
+## Practice
+```{r}
+# Keyed data.table DT
+DT <- data.table(A = letters[c(2, 1, 2, 3, 1, 2, 3)], 
+                 B = c(5, 4, 1, 9, 8, 8, 6), 
+                 C = 6:12, 
+                 key = "A,B")
+
+# Get the key of DT
+key (DT)
+
+# Row where A == "b" and B == 6
+DT[.("b",6)]
+
+# Return the prevailing row
+DT[.("b",6), roll = TRUE]
+
+# Return the nearest row
+DT[.("b",6), roll = "nearest"]
+```
+
+
+The rollends argument is actually a vector of two logical values, but remember that you can always look this up via ?data.table. You were introduced to this argument via the control ends section. If you want to roll for a certain distance, you should continue to use the roll argument.
+```{r}
+# Keyed data.table DT
+DT <- data.table(A = letters[c(2, 1, 2, 3, 1, 2, 3)], 
+                 B = c(5, 4, 1, 9, 8, 8, 6), 
+                 C = 6:12, 
+                 key = "A,B")
+
+# Print the sequence (-2):10 for the "b" group
+DT[.("b", (-2):10)]
+
+# Add code: carry the prevailing values forwards
+DT[.("b", (-2):10), roll = TRUE]
+
+# Add code: carry the first observation backwards
+DT[.("b", (-2):10), roll = TRUE, rollends = TRUE]
+DT[.("b", (-2):10), roll = TRUE, rollends = c(TRUE, TRUE)] # also OK
+```
