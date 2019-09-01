@@ -1,6 +1,16 @@
-#### Quick links
+#### data.table
 
-[Obtain tidy datasets using tidyr](https://linclgit.github.io/R_the_basics/Tidying_data_with_tidyr.html){:target="_blank"}
+[Introduction to data.table](https://linclgit.github.io/R_the_basics/Intro_to_datatable.html)
+
+#### Folder manipulation
+
+[Update package in new R version](https://linclgit.github.io/R_the_basics/src/R_movePackages.R)
+
+---  
+
+#### Data cleaning techniques
+
+[Obtain tidy datasets using tidyr](https://linclgit.github.io/R_the_basics/Tidying_data_with_tidyr.html)
 
 [Five verbs in dplyr](https://linclgit.github.io/R_the_basics/package_dplyr.html)
 
