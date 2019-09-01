@@ -1,6 +1,6 @@
 #### Quick links
 
-[Obtain tidy datasets using tidyr](https://linclgit.github.io/basic_data_cleaning/Tidying_data_with_tidyr.html)
+[Obtain tidy datasets using tidyr](https://linclgit.github.io/basic_data_cleaning/Tidying_data_with_tidyr.html){:target="_blank"}
 
 [Five verbs in dplyr](https://linclgit.github.io/basic_data_cleaning/package_dplyr.html)
 
