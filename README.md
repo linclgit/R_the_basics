@@ -4,7 +4,7 @@
 
 #### Folder manipulation
 
-[Update package in new R version](https://linclgit.github.io/R_the_basics/src/R_movePackages.R)
+[Update package in new R version](https://github.com/linclgit/R_the_basics/blob/master/src/R_movePackages.R)
 
 ---  
 
