@@ -1,5 +1,9 @@
 ## -----------------------------------------------
 ## Move R packages from old folder to new folder
+## 
+## Note: R does not support copy and paste files
+## if destination folders do not exist.
+## Therefore, create folders before moving files.
 ## -----------------------------------------------
 
 
@@ -14,7 +18,7 @@ old.files <- list.dirs (old, full.names = FALSE, recursive = TRUE)
 # all folders inside the new R folder
 new.files <- list.dirs (new, full.names = FALSE, recursive = TRUE)
 
-## 2- Create empty folders in new library
+## 2- Create empty folders in new library in order to deposit files
 # folders not present (= to be created) in new R folder
 mv.files <- setdiff (old.files, new.files)
 # define full directories to be created
@@ -26,7 +30,7 @@ for (i in 1:length (dirs)) {
 # Folders are ready, Check
 length (list.dirs (new, full.names = TRUE, recursive = TRUE))
 
-## 3- Move files from old to new directories
+## 3- Move files from old to new directories by _rename_ old files
 before <- list.files (mv.files, full.names = TRUE, recursive = TRUE)
 after <- gsub ("3.5", "3.6", before)
 file.rename (before, after) # DONE!!!
